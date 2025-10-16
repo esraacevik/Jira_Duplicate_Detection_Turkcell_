@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yeni Rapor Olutur - Bug Report System</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        // Check if user is logged in
+        const userSession = JSON.parse(localStorage.getItem('userSession'));
+        if (!userSession) {
+            window.location.href = 'login.html';
+        }
+        
+        // Note: systemConfig check is now in create_report.js
+    </script>
+    <style>
+        .form-section.create-mode {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .success-message {
+            background: var(--success-light);
+            border: 2px solid var(--success-color);
+            padding: var(--spacing-lg);
+            border-radius: var(--radius-lg);
+            margin-top: var(--spacing-lg);
+            display: none;
+        }
+        .success-message.show {
+            display: block;
+            animation: slideIn 0.3s ease-out;
+        }
+        .btn-secondary {
+            background: var(--gray-200);
+            color: var(--gray-700);
+        }
+        .btn-secondary:hover {
+            background: var(--gray-300);
+        }
+        .nav-links {
+            display: flex;
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+        }
+        .nav-link {
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: var(--radius-md);
+            text-decoration: none;
+            color: var(--gray-700);
+            transition: all 0.2s;
+        }
+        .nav-link:hover {
+            background: var(--gray-100);
+        }
+        .nav-link.active {
+            background: var(--primary-color);
+            color: var(--secondary-color);
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="32" height="32" rx="8" fill="#FFCC00"/>
+                    <path d="M16 8L22 14L16 20L10 14L16 8Z" fill="#000000"/>
+                    <path d="M16 12L20 16L16 20L12 16L16 12Z" fill="#333333"/>
+                </svg>
+                <h1>Bug Rapor Sistemi</h1>
+                <span style="background: #FFCC00; color: #000; padding: 4px 12px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; margin-left: 12px;">TURKCELL</span>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="main-content" style="padding-top: var(--spacing-lg); padding-bottom: 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div class="nav-links">
+                    <a href="index.html" class="nav-link"> Benzer Raporlar Ara</a>
+                    <a href="create_report.html" class="nav-link active"> Yeni Rapor Olutur</a>
+                </div>
+                <div class="stat" style="background: linear-gradient(135deg, #F9FAFB 0%, #F3F4F6 100%); cursor: pointer; padding: 8px 16px;" onclick="showUserMenu()">
+                    <span style="font-size: 1.2rem;"></span>
+                    <span id="userNameDisplay" style="margin-left: 8px; font-size: 0.9rem;"></span>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Custom Data Banner -->
+            <div id="customDataBanner" style="display: none; background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%); border: 2px solid #10B981; padding: var(--spacing-lg); border-radius: var(--radius-lg); margin-bottom: var(--spacing-xl);">
+                <div style="display: flex; align-items: center; gap: var(--spacing-md);">
+                    <div style="font-size: 2rem;"></div>
+                    <div style="flex: 1;">
+                        <h4 style="margin: 0 0 var(--spacing-xs) 0; color: #065F46;">Yüklenen Veri Seti ile çalışıyorsunuz</h4>
+                        <p style="margin: 0; color: #047857; font-size: 0.9rem;" id="customDataInfo"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Report Form Section -->
+            <section class="form-section create-mode">
+                <div class="section-header">
+                    <h2> Yeni Bug Raporu Olutur</h2>
+                    <p class="section-description">Tüm alanları doldurun ve raporu kaydedin</p>
+                </div>
+
+                <form id="createReportForm" class="report-form">
+                    <!-- Important Notice -->
+                    <div style="background: rgba(255, 244, 224, 0.5); backdrop-filter: blur(10px); border-left: 4px solid var(--primary-color); padding: var(--spacing-md); border-radius: var(--radius-md); margin-bottom: var(--spacing-lg); border: 1px solid rgba(255, 204, 0, 0.3);">
+                        <p style="margin: 0; color: #1a1a1a; font-size: 0.9rem;">
+                             <strong>İpucu:</strong> Summary, Component ve Version alanlarını doldurduğunuzda benzer raporlar otomatik olarak aranacak!
+                        </p>
+                    </div>
+
+                    <!-- Dynamic Form Fields (Generated by JavaScript) -->
+                    <div id="dynamicFormFields">
+                        <!-- Loading indicator -->
+                        <div style="text-align: center; padding: var(--spacing-xl); color: var(--gray-500);">
+                             Form alanları yükleniyor...
+                        </div>
+                    </div>
+
+
+                    <!-- Similar Reports Section -->
+                    <div id="similarReportsSection" style="display: none; margin-top: var(--spacing-xl); padding-top: var(--spacing-xl); border-top: 2px solid var(--gray-200);">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--spacing-md);">
+                            <h3 style="color: var(--warning-color); font-size: 1.1rem; display: flex; align-items: center; gap: var(--spacing-sm);">
+                                Benzer Raporlar Bulundu
+                            </h3>
+                            <span id="similarCount" class="results-count" style="background: var(--warning-color); color: white;"></span>
+                        </div>
+                        <p style="color: var(--gray-700); margin-bottom: var(--spacing-md); font-size: 0.9rem;">
+                            aşağıdaki benzer raporlar bulundu. Yeni bir rapor oluşturmadan önce bu raporları kontrol edin.
+                        </p>
+                        <div id="similarReportsList" class="results-list"></div>
+                    </div>
+
+                    <!-- Buttons -->
+                    <div style="display: flex; gap: var(--spacing-md); margin-top: var(--spacing-xl);">
+                        <button type="submit" class="btn btn-primary" id="submitBtn" style="flex: 1;">
+                            <span>Raporu Kaydet</span>
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="window.location.href='index.html'" style="flex: 0 0 auto;">
+                            <span>İptal</span>
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Success Message -->
+                <div id="successMessage" class="success-message">
+                    <div style="display: flex; align-items: center; gap: var(--spacing-md);">
+                        <div style="font-size: 2rem;"></div>
+                        <div>
+                            <strong>Rapor başarıyla kaydedildi!</strong>
+                            <p style="margin-top: var(--spacing-xs); color: var(--gray-700);">
+                                Rapor ID: <strong id="reportId"></strong>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-content">
+                <p>Bug Report System  Powered by <strong>Turkcell AI</strong></p>
+            </div>
+        </footer>
+    </div>
+
+    <script src="create_report.js?v=130"></script>
+    <script src="stars.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Bug Report System</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Animated Background Section */
+        .animated-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 2px;
+            flex-wrap: wrap;
+            overflow: hidden;
+            background: linear-gradient(135deg, #0A0E27 0%, #1a1f3a 100%);
+        }
+
+        /* Animated Gradient Effect */
+        .animated-bg::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(#0A0E27, #FFCC00, #0A0E27);
+            animation: gradientMove 5s linear infinite;
+        }
+
+        @keyframes gradientMove {
+            0% {
+                transform: translateY(-100%);
+            }
+            100% {
+                transform: translateY(100%);
+            }
+        }
+
+        /* Animated Blocks */
+        .animated-bg span {
+            position: relative;
+            display: block;
+            width: calc(6.25vw - 2px);
+            height: calc(6.25vw - 2px);
+            background: #1a1f3a;
+            z-index: 2;
+            transition: 1.5s;
+        }
+
+        .animated-bg span:hover {
+            background: #FFCC00;
+            transition: 0s;
+        }
+
+        /* Login Container */
+        .login-container {
+            position: relative;
+            max-width: 450px;
+            margin: 0 auto;
+            padding: 40px;
+            background: rgba(34, 34, 34, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+        }
+        
+        .login-header {
+            text-align: center;
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        .login-header h1 {
+            color: #FFCC00;
+            text-transform: uppercase;
+            font-size: 2em;
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .login-header p {
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+        
+        .login-logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto var(--spacing-md);
+            background: linear-gradient(135deg, #FFCC00 0%, #FF9500 100%);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            box-shadow: 0 0 20px rgba(255, 204, 0, 0.5);
+        }
+        
+        /* Form Styling */
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        .form-label {
+            color: #fff;
+            margin-bottom: 8px;
+            display: block;
+        }
+        
+        .form-input {
+            width: 100%;
+            background: #333;
+            border: none;
+            outline: none;
+            padding: 15px;
+            border-radius: 4px;
+            color: #fff;
+            font-weight: 500;
+            font-size: 1em;
+            transition: 0.3s;
+        }
+        
+        .form-input:focus {
+            background: #444;
+            box-shadow: 0 0 10px rgba(255, 204, 0, 0.3);
+        }
+        
+        .btn-primary {
+            width: 100%;
+            padding: 15px;
+            background: #FFCC00;
+            color: #000;
+            border: none;
+            font-weight: 600;
+            font-size: 1.2em;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: 0.3s;
+        }
+        
+        .btn-primary:hover {
+            background: #FFD700;
+            box-shadow: 0 0 20px rgba(255, 204, 0, 0.5);
+        }
+        
+        .btn-primary:active {
+            opacity: 0.8;
+        }
+        
+        .error-message {
+            background: #FEE2E2;
+            border: 1px solid #EF4444;
+            color: #991B1B;
+            padding: var(--spacing-md);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--spacing-md);
+            display: none;
+        }
+        
+        .error-message.show {
+            display: block;
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .animated-bg span {
+                width: calc(10vw - 2px);
+                height: calc(10vw - 2px);
+            }
+        }
+
+        @media (max-width: 600px) {
+            .animated-bg span {
+                width: calc(20vw - 2px);
+                height: calc(20vw - 2px);
+            }
+            .login-container {
+                margin: 20px;
+                padding: 30px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated Background -->
+    <section class="animated-bg">
+        <!-- 250 animated spans for grid effect -->
+        <script>
+            for (let i = 0; i < 250; i++) {
+                document.write('<span></span>');
+            }
+        </script>
+    </section>
+
+    <div class="login-container">
+        <!-- Logo -->
+        <div class="login-header">
+            <div class="login-logo"></div>
+            <h1>Sistem Girişi</h1>
+            <p>Bug Report Duplicate Detection System</p>
+        </div>
+
+        <!-- Error Message -->
+        <div id="errorMessage" class="error-message">
+            <strong> Hata!</strong>
+            <p id="errorText"></p>
+        </div>
+
+        <!-- Login Form -->
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username" class="form-label">
+                    <span>Kullanıcı Ad</span>
+                    <span class="required">*</span>
+                </label>
+                <input 
+                    type="text" 
+                    id="username" 
+                    name="username" 
+                    class="form-input"
+                    placeholder="kullanici@turkcell.com.tr"
+                    required
+                    autocomplete="username"
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="password" class="form-label">
+                    <span>Şifre</span>
+                    <span class="required">*</span>
+                </label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    name="password" 
+                    class="form-input"
+                    placeholder=""
+                    required
+                    autocomplete="current-password"
+                >
+            </div>
+
+            <button type="submit" class="btn btn-primary" id="loginBtn" style="width: 100%; margin-top: var(--spacing-lg);">
+                <span>Giriş Yap</span>
+            </button>
+        </form>
+
+        <!-- Demo Credentials -->
+        <div style="margin-top: var(--spacing-xl); padding: var(--spacing-md); background: rgba(255, 204, 0, 0.1); border: 1px solid #FFCC00; border-radius: var(--radius-md);">
+            <p style="font-size: 0.85rem; color: #FFCC00; margin: 0;">
+                <strong>Demo Giriş:</strong><br>
+                Kullanıcı: <code style="background: #444; padding: 2px 6px; border-radius: 3px;">demo</code> / 
+                <code style="background: #444; padding: 2px 6px; border-radius: 3px;">test123</code>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('loginForm');
+        const loginBtn = document.getElementById('loginBtn');
+        const errorMessage = document.getElementById('errorMessage');
+        const errorText = document.getElementById('errorText');
+
+        // Demo users
+        const USERS = {
+            'demo': { password: 'test123', role: 'admin', name: 'Demo User' },
+            'admin@turkcell.com.tr': { password: 'admin123', role: 'admin', name: 'Admin User' },
+            'user@turkcell.com.tr': { password: 'user123', role: 'user', name: 'Standard User' }
+        };
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            
+            // Disable button
+            loginBtn.disabled = true;
+            loginBtn.innerHTML = '<span> Giri yaplyor...</span>';
+            
+            // Simulate API call
+            setTimeout(() => {
+                // Validate credentials
+                const user = USERS[username];
+                
+                if (!user || user.password !== password) {
+                    // Show error
+                    errorText.textContent = 'Kullanıcı adı veya şifre hatalı!';
+                    errorMessage.classList.add('show');
+                    
+                    // Re-enable button
+                    loginBtn.disabled = false;
+                    loginBtn.innerHTML = '<span>Giriş Yap</span>';
+                    return;
+                }
+                
+                // Success - store session
+                const session = {
+                    username: username,
+                    role: user.role,
+                    name: user.name,
+                    loginTime: new Date().toISOString()
+                };
+                
+                localStorage.setItem('userSession', JSON.stringify(session));
+                
+                // Redirect to data selection
+                window.location.href = 'data_selection.html';
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
+

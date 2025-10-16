@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JIRA Duplicate Detection - Ana Sayfa</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0A0E27;
+            color: white;
+            overflow-x: hidden;
+        }
+
+        /* Animated Background */
+        .animated-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #0A0E27 0%, #1a1f3a 100%);
+            z-index: 0;
+        }
+
+        .particle {
+            position: absolute;
+            background: #FFCC00;
+            border-radius: 50%;
+            animation: float linear infinite;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(100vh) scale(0);
+                opacity: 0;
+            }
+            10% {
+                opacity: 0.8;
+            }
+            90% {
+                opacity: 0.8;
+            }
+            100% {
+                transform: translateY(-100px) scale(1);
+                opacity: 0;
+            }
+        }
+
+        /* Main Container */
+        .main-container {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+
+        .content-wrapper {
+            max-width: 1120px;
+            width: 100%;
+        }
+
+        /* Hero Section */
+        .hero {
+            text-align: center;
+            margin-bottom: 64px;
+        }
+
+        .hero h1 {
+            font-size: 3.6rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, #FFCC00 0%, #FFD700 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 16px;
+            line-height: 1.1;
+        }
+
+        .hero p {
+            font-size: 1.12rem;
+            color: #aaa;
+            max-width: 560px;
+            margin: 0 auto 32px;
+            line-height: 1.6;
+        }
+
+        .hero .badge {
+            display: inline-block;
+            padding: 8px 20px;
+            background: rgba(255, 204, 0, 0.15);
+            border: 2px solid rgba(255, 204, 0, 0.4);
+            border-radius: 24px;
+            color: #FFCC00;
+            font-size: 0.76rem;
+            font-weight: 600;
+            margin-bottom: 24px;
+        }
+
+        /* Quick Actions */
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+            margin-bottom: 48px;
+        }
+
+        .action-card {
+            background: rgba(255, 204, 0, 0.08);
+            border: 2px solid rgba(255, 204, 0, 0.3);
+            border-radius: 19px;
+            padding: 40px 32px;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .action-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(255, 204, 0, 0) 0%, rgba(255, 204, 0, 0.1) 100%);
+            opacity: 0;
+            transition: 0.3s;
+        }
+
+        .action-card:hover {
+            background: rgba(255, 204, 0, 0.15);
+            border-color: #FFCC00;
+            transform: translateY(-8px);
+            box-shadow: 0 16px 40px rgba(255, 204, 0, 0.3);
+        }
+
+        .action-card:hover::before {
+            opacity: 1;
+        }
+
+        .action-card .icon {
+            font-size: 3.2rem;
+            margin-bottom: 20px;
+            filter: grayscale(0.3);
+        }
+
+        .action-card h3 {
+            color: #FFCC00;
+            font-size: 1.44rem;
+            margin-bottom: 12px;
+            font-weight: 700;
+        }
+
+        .action-card p {
+            color: #aaa;
+            font-size: 0.84rem;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .action-card .btn {
+            display: inline-block;
+            padding: 12px 32px;
+            background: linear-gradient(135deg, #FFCC00 0%, #FFD700 100%);
+            color: #000;
+            font-size: 0.88rem;
+            font-weight: 700;
+            border-radius: 40px;
+            text-decoration: none;
+            transition: 0.3s;
+            position: relative;
+            z-index: 1;
+        }
+
+        .action-card .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 24px rgba(255, 204, 0, 0.5);
+        }
+
+        /* Features */
+        .features {
+            margin-top: 64px;
+        }
+
+        .features h2 {
+            text-align: center;
+            font-size: 2rem;
+            color: #FFCC00;
+            margin-bottom: 40px;
+            font-weight: 800;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+
+        .feature-item {
+            background: rgba(255, 204, 0, 0.05);
+            border: 1px solid rgba(255, 204, 0, 0.2);
+            border-radius: 13px;
+            padding: 28px 24px;
+            text-align: center;
+            transition: 0.3s;
+        }
+
+        .feature-item:hover {
+            background: rgba(255, 204, 0, 0.1);
+            border-color: rgba(255, 204, 0, 0.4);
+            transform: translateY(-4px);
+        }
+
+        .feature-item .icon {
+            font-size: 2rem;
+            margin-bottom: 16px;
+        }
+
+        .feature-item h4 {
+            color: #FFCC00;
+            font-size: 0.96rem;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .feature-item p {
+            color: #aaa;
+            font-size: 0.76rem;
+            line-height: 1.5;
+        }
+
+        /* Stats */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            margin-top: 48px;
+            padding: 32px 0;
+            border-top: 1px solid rgba(255, 204, 0, 0.2);
+            border-bottom: 1px solid rgba(255, 204, 0, 0.2);
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-item .number {
+            font-size: 2.4rem;
+            font-weight: 900;
+            color: #FFCC00;
+            margin-bottom: 8px;
+        }
+
+        .stat-item .label {
+            color: #aaa;
+            font-size: 0.88rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .quick-actions {
+                grid-template-columns: 1fr;
+            }
+            
+            .feature-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.24rem;
+            }
+            
+            .hero p {
+                font-size: 0.88rem;
+            }
+            
+            .feature-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="animated-bg" id="animatedBg"></div>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <div class="content-wrapper">
+            <!-- Hero Section -->
+            <div class="hero">
+                <div class="badge">JIRA Kalite Analiz Projesi</div>
+                <h1>Duplicate Bug Detection</h1>
+                <p>AI destekli akıllı duplicate tespit sistemi ile manuel kontrol sürenizi %90 azaltın ve test sürecinizi hızlandırın.</p>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="quick-actions">
+                <div class="action-card" onclick="window.location.href='login.html'">
+                    <div class="icon">🚀</div>
+                    <h3>Hemen Başlayın</h3>
+                    <p>Sisteme giriş yapın ve duplicate bug tespitine başlayın. Demo hesabı ile hemen deneyebilirsiniz.</p>
+                    <a href="login.html" class="btn">Giriş Yap →</a>
+                </div>
+
+                <div class="action-card" onclick="window.location.href='index.html'">
+                    <div class="icon">🔍</div>
+                    <h3>Benzer Raporları Ara</h3>
+                    <p>Yeni bir bug raporu oluşturmadan önce benzer raporları arayın ve duplicate'leri önleyin.</p>
+                    <a href="index.html" class="btn">Aramaya Başla →</a>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="number">90%</div>
+                    <div class="label">Zaman Tasarrufu</div>
+                </div>
+                <div class="stat-item">
+                    <div class="number">%70+</div>
+                    <div class="label">Doğruluk Oranı</div>
+                </div>
+                <div class="stat-item">
+                    <div class="number">24/7</div>
+                    <div class="label">Otomatik Tarama</div>
+                </div>
+            </div>
+
+            <!-- Features -->
+            <div class="features">
+                <h2>Neler Yapabilirsiniz?</h2>
+                <div class="feature-grid">
+                    <div class="feature-item">
+                        <div class="icon">⚡</div>
+                        <h4>Hızlı Tespit</h4>
+                        <p>BERT embedding ve cross-encoder ile saniyeler içinde benzer bug raporlarını tespit edin.</p>
+                    </div>
+                    <div class="feature-item">
+                        <div class="icon">🎯</div>
+                        <h4>Akıllı Eşleştirme</h4>
+                        <p>Platform, versiyon ve dil bilgilerini dikkate alarak en uygun eşleşmeleri bulun.</p>
+                    </div>
+                    <div class="feature-item">
+                        <div class="icon">📊</div>
+                        <h4>Detaylı Analiz</h4>
+                        <p>Her eşleşme için detaylı similarity skorları ve karşılaştırma metrikleri görün.</p>
+                    </div>
+                    <div class="feature-item">
+                        <div class="icon">🌐</div>
+                        <h4>Web Tabanlı</h4>
+                        <p>Kurulum gerektirmez, herhangi bir cihazdan erişim sağlayın.</p>
+                    </div>
+                    <div class="feature-item">
+                        <div class="icon">🔄</div>
+                        <h4>Kolay Entegrasyon</h4>
+                        <p>Mevcut JIRA sistemlerinize kolayca entegre edilebilir.</p>
+                    </div>
+                    <div class="feature-item">
+                        <div class="icon">💾</div>
+                        <h4>Özel Veri Desteği</h4>
+                        <p>Kendi veri setinizi yükleyin ve özelleştirilmiş aramalar yapın.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Create particles (yıldızlar)
+        const bgElement = document.getElementById('animatedBg');
+        for (let i = 0; i < 100; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.width = Math.random() * 5 + 2 + 'px';
+            particle.style.height = particle.style.width;
+            particle.style.left = Math.random() * 100 + '%';
+            particle.style.animationDuration = (Math.random() * 20 + 10) + 's';
+            particle.style.animationDelay = Math.random() * 10 + 's';
+            bgElement.appendChild(particle);
+        }
+    </script>
+</body>
+</html>
+

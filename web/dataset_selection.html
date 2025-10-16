@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Veri Seti Seimi - Turkcell Bug Report System</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .dataset-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: var(--spacing-lg);
+            margin-top: var(--spacing-xl);
+        }
+
+        .dataset-card {
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(15px);
+            border-radius: 12px;
+            padding: var(--spacing-xl);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+        }
+
+        .dataset-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(255, 204, 0, 0.3);
+            border-color: var(--primary-color);
+        }
+
+        .dataset-card.selected {
+            border-color: var(--primary-color);
+            background: linear-gradient(135deg, #0A0E27 0%, #1a1f3a 100%);
+        }
+
+        .dataset-card.selected .dataset-name,
+        .dataset-card.selected .dataset-info,
+        .dataset-card.selected .info-label,
+        .dataset-card.selected .info-value,
+        .dataset-card.selected .columns-label,
+        .dataset-card.selected .column-tag {
+            color: #ffffff !important;
+        }
+
+        .dataset-card.selected .column-tag {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .dataset-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .dataset-name {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--secondary-color);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dataset-badge {
+            background: var(--primary-color);
+            color: var(--secondary-color);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+
+        .dataset-info {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--spacing-sm);
+            margin: var(--spacing-md) 0;
+            padding: var(--spacing-md);
+            background: rgba(255, 204, 0, 0.1);
+            border-radius: 8px;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .info-label {
+            font-size: 0.75rem;
+            color: #aaaaaa;
+            margin-bottom: 4px;
+        }
+
+        .info-value {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--secondary-color);
+        }
+
+        .dataset-columns {
+            margin-top: var(--spacing-md);
+        }
+
+        .columns-label {
+            font-size: 0.75rem;
+            color: #aaaaaa;
+            margin-bottom: 8px;
+        }
+
+        .columns-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .column-tag {
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(209, 213, 219, 0.8);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            color: var(--gray-700);
+        }
+
+        .loading-spinner {
+            text-align: center;
+            padding: var(--spacing-2xl);
+            color: var(--gray-500);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: var(--spacing-md);
+            margin-top: var(--spacing-xl);
+            padding-top: var(--spacing-xl);
+            border-top: 2px solid var(--gray-200);
+        }
+
+        .btn-back {
+            background: var(--gray-600);
+            color: white;
+        }
+
+        .btn-back:hover {
+            background: var(--gray-700);
+        }
+
+        .page-header-subtitle {
+            color: #ffffff;
+            font-size: 1rem;
+            margin-top: var(--spacing-sm);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                        <circle cx="20" cy="20" r="18" fill="#FFCC00"/>
+                        <path d="M20 10 L20 30 M12 20 L28 20" stroke="#000000" stroke-width="3" stroke-linecap="round"/>
+                    </svg>
+                    <div>
+                        <h1>TURKCELL</h1>
+                        <p>Bug Report System</p>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="page-header">
+                <h2>Veri Seti Seçimi</h2>
+                <p class="page-header-subtitle">Kullanmak istediğiniz veri setini seçin</p>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loadingState" class="loading-spinner">
+                <div style="font-size: 2rem; margin-bottom: 16px;"></div>
+                <div>Veri setleri yükleniyor...</div>
+            </div>
+
+            <!-- Datasets Grid -->
+            <div id="datasetsGrid" class="dataset-grid" style="display: none;">
+                <!-- Dataset cards will be injected here -->
+            </div>
+
+            <!-- Action Buttons -->
+            <div id="actionButtons" class="action-buttons" style="display: none;">
+                <button class="btn btn-back" onclick="goBack()">
+                     Geri Dön
+                </button>
+                <button class="btn btn-primary" id="loadDatasetBtn" disabled onclick="loadSelectedDataset()">
+                     Veri Setini Yükle ve Devam Et
+                </button>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-content">
+                <p>Bug Report System  Powered by <strong>Turkcell AI</strong></p>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        (function() {
+            'use strict';
+            
+            var API_BASE_URL = 'http://localhost:5001/api';
+            var selectedDataset = null;
+
+            // Check session (using userSession key)
+            try {
+                var sessionStr = localStorage.getItem('userSession');
+                console.log(' Session string:', sessionStr);
+                var session = sessionStr ? JSON.parse(sessionStr) : {};
+                console.log(' Session object:', session);
+                if (!session.username) {
+                    console.warn('No username in session, redirecting to login');
+                    window.location.href = 'login.html';
+                    return;
+                }
+                console.log('User logged in:', session.username);
+            } catch (e) {
+                console.error(' Session error:', e);
+                window.location.href = 'login.html';
+                return;
+            }
+
+            // Load datasets on page load
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', loadDatasets);
+            } else {
+                loadDatasets();
+            }
+
+            function loadDatasets() {
+                // Get username from session
+                var sessionStr = localStorage.getItem('userSession');
+                var session = sessionStr ? JSON.parse(sessionStr) : {};
+                var username = session.username || 'demo';
+                
+                console.log(' Loading datasets from:', API_BASE_URL + '/available_datasets?username=' + username);
+                fetch(API_BASE_URL + '/available_datasets?username=' + username)
+                    .then(function(response) { 
+                        console.log('Response received:', response.status);
+                        return response.json(); 
+                    })
+                    .then(function(data) {
+                        console.log('Data received:', data);
+                        if (data.success && data.datasets) {
+                            console.log('Displaying', data.datasets.length, 'datasets');
+                            displayDatasets(data.datasets);
+                        } else {
+                            throw new Error('Failed to load datasets: ' + JSON.stringify(data));
+                        }
+                    })
+                    .catch(function(error) {
+                        console.error(' Error loading datasets:', error);
+                        var loadingState = document.getElementById('loadingState');
+                        if (loadingState) {
+                            loadingState.innerHTML = '<div style="color: #DC2626;"> Veri setleri yklenirken hata olutu<br><small>' + error.message + '</small><br><small>lütfen console\'u kontrol edin (F12)</small></div>';
+                        }
+                    });
+            }
+
+            function displayDatasets(datasets) {
+                var grid = document.getElementById('datasetsGrid');
+                var loadingState = document.getElementById('loadingState');
+                var actionButtons = document.getElementById('actionButtons');
+
+                if (datasets.length === 0) {
+                    loadingState.innerHTML = '<div style="color: #6B7280;"> Henz veri seti bulunmuyor</div>';
+                    return;
+                }
+
+                // Hide loading, show grid and buttons
+                loadingState.style.display = 'none';
+                grid.style.display = 'grid';
+                actionButtons.style.display = 'flex';
+
+                // Generate dataset cards (user datasets first, then default)
+                var userDatasets = [];
+                var defaultDatasets = [];
+                
+                for (var i = 0; i < datasets.length; i++) {
+                    if (datasets[i].type === 'user') {
+                        userDatasets.push(datasets[i]);
+                    } else {
+                        defaultDatasets.push(datasets[i]);
+                    }
+                }
+                
+                var html = '';
+                var allDatasets = userDatasets.concat(defaultDatasets);
+                
+                for (var i = 0; i < allDatasets.length; i++) {
+                    var dataset = allDatasets[i];
+                    var badge = '';
+                    if (dataset.type === 'user') {
+                        badge = '<span class="dataset-badge" style="background: #10B981; color: white;">BENM VERM</span>';
+                    } else if (i === userDatasets.length) {
+                        badge = '<span class="dataset-badge">VARSAYILAN</span>';
+                    }
+                    
+                    var columnsHtml = '';
+                    for (var j = 0; j < Math.min(8, dataset.columns.length); j++) {
+                        columnsHtml += '<span class="column-tag">' + dataset.columns[j] + '</span>';
+                    }
+                    if (dataset.columns.length > 8) {
+                        columnsHtml += '<span class="column-tag">+' + (dataset.columns.length - 8) + ' daha</span>';
+                    }
+                    
+                    html += '<div class="dataset-card" onclick="window.selectDataset(\'' + dataset.fileName + '\', this)">' +
+                        '<div class="dataset-header"><div class="dataset-name">' + dataset.name + '</div>' + badge + '</div>' +
+                        '<div class="dataset-info">' +
+                        '<div class="info-item"><div class="info-label">Toplam Kayt</div><div class="info-value">' + dataset.rowCount.toLocaleString() + '</div></div>' +
+                        '<div class="info-item"><div class="info-label">sütun Says</div><div class="info-value">' + dataset.columnCount + '</div></div>' +
+                        '<div class="info-item"><div class="info-label">Dosya Boyutu</div><div class="info-value">' + dataset.fileSize + '</div></div>' +
+                        '<div class="info-item"><div class="info-label">Son Gncelleme</div><div class="info-value">' + dataset.lastModified + '</div></div>' +
+                        '</div>' +
+                        '<div class="dataset-columns"><div class="columns-label">Stunlar (' + dataset.columns.length + '):</div>' +
+                        '<div class="columns-list">' + columnsHtml + '</div></div>' +
+                        '</div>';
+                }
+                grid.innerHTML = html;
+            }
+
+            window.selectDataset = function(fileName, cardElement) {
+                var cards = document.querySelectorAll('.dataset-card');
+                for (var i = 0; i < cards.length; i++) {
+                    cards[i].classList.remove('selected');
+                }
+                cardElement.classList.add('selected');
+                selectedDataset = fileName;
+                document.getElementById('loadDatasetBtn').disabled = false;
+            };
+
+            window.loadSelectedDataset = function() {
+                if (!selectedDataset) {
+                    alert('lütfen bir veri seti sein');
+                    return;
+                }
+
+                var btn = document.getElementById('loadDatasetBtn');
+                btn.disabled = true;
+                btn.innerHTML = ' Ykleniyor...';
+
+                fetch(API_BASE_URL + '/load_dataset/' + selectedDataset, { method: 'POST' })
+                    .then(function(response) { return response.json(); })
+                    .then(function(data) {
+                        if (data.success) {
+                            localStorage.setItem('selectedDataset', JSON.stringify({
+                                fileName: selectedDataset,
+                                rowCount: data.rowCount,
+                                columns: data.columns,
+                                loadedAt: new Date().toISOString()
+                            }));
+                            window.location.href = 'column_mapping.html';
+                        } else {
+                            throw new Error(data.error || 'Failed to load dataset');
+                        }
+                    })
+                    .catch(function(error) {
+                        console.error('Error loading dataset:', error);
+                        alert('Veri seti yklenirken hata olutu: ' + error.message);
+                        btn.disabled = false;
+                        btn.innerHTML = ' Veri Setini yükle ve Devam Et';
+                    });
+            };
+
+            window.goBack = function() {
+                window.location.href = 'data_selection.html';
+            };
+        })();
+    </script>
+    <script src="stars.js"></script>
+</body>
+</html>
+

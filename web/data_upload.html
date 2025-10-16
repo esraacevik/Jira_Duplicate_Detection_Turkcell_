@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Upload - Bug Report System</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .upload-container {
+            max-width: 1000px;
+            margin: 50px auto;
+            padding: var(--spacing-2xl);
+        }
+        .upload-area {
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(15px);
+            border: 3px dashed rgba(209, 213, 219, 0.8);
+            border-radius: var(--radius-xl);
+            padding: var(--spacing-3xl);
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: var(--spacing-xl);
+        }
+        .upload-area:hover {
+            border-color: var(--primary-color);
+            background: rgba(255, 251, 240, 0.6);
+        }
+        .upload-area.dragover {
+            border-color: var(--primary-color);
+            background: linear-gradient(135deg, #FFFBF0 0%, #FFF9E6 100%);
+            transform: scale(1.02);
+        }
+        .file-info {
+            background: var(--success-light);
+            border: 2px solid #10B981;
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            margin-bottom: var(--spacing-xl);
+            display: none;
+        }
+        .file-info.show {
+            display: block;
+        }
+        .preview-table {
+            overflow-x: auto;
+            margin-top: var(--spacing-lg);
+        }
+        .preview-table table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        .preview-table th {
+            background: var(--gray-100);
+            padding: var(--spacing-sm);
+            border: 1px solid var(--gray-300);
+            font-weight: 600;
+        }
+        .preview-table td {
+            padding: var(--spacing-sm);
+            border: 1px solid var(--gray-300);
+        }
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: var(--gray-200);
+            border-radius: 15px;
+            overflow: hidden;
+            margin: var(--spacing-lg) 0;
+            display: none;
+        }
+        .progress-bar.show {
+            display: block;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-color) 0%, #FF9500 100%);
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--secondary-color);
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body style="background: linear-gradient(135deg, #0A0E27 0%, #1a1f3a 100%); min-height: 100vh;">
+    <div class="upload-container">
+        <!-- Header -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-xl);">
+            <div>
+                <h1 style="color: #ffffff; margin-bottom: var(--spacing-xs);">
+                    Yeni Veri Seti yükle
+                </h1>
+                <p style="color: #aaaaaa;">
+                    CSV veya Excel dosyanızı yükleyin ve sisteme aktarn
+                </p>
+            </div>
+            <button onclick="goBack()" class="btn btn-secondary">
+                 Geri
+            </button>
+        </div>
+
+        <!-- Info Box -->
+        <div style="background: linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%); border-left: 4px solid #0EA5E9; padding: var(--spacing-lg); border-radius: var(--radius-md); margin-bottom: var(--spacing-xl);">
+            <h3 style="margin: 0 0 var(--spacing-sm) 0; color: #0369A1;">
+                 Desteklenen Formatlar
+            </h3>
+            <ul style="margin: 0; padding-left: 20px; color: #0C4A6E; font-size: 0.9rem;">
+                <li>CSV dosyaları (.csv) - Virgül veya noktalı virgül ayraç</li>
+                <li>Excel dosyaları (.xlsx, .xls)</li>
+                <li>UTF-8 encoding önerilir (Türkçe karakter desteği için)</li>
+                <li>İlk satır sütun başlıkları olmalı</li>
+                <li>En az 2 sütun gerekli (summary ve description önerilir)</li>
+            </ul>
+        </div>
+
+        <!-- Upload Area -->
+        <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+            <div style="font-size: 4rem; margin-bottom: var(--spacing-md);"></div>
+            <h3 style="color: var(--secondary-color); margin-bottom: var(--spacing-sm);">
+                Dosya Seçin veya Sürükle-Bırak
+            </h3>
+            <p style="color: #aaaaaa; margin-bottom: var(--spacing-md);">
+                CSV veya Excel dosyanızı buraya sürükleyip bırakın
+            </p>
+            <button class="btn btn-primary" onclick="event.stopPropagation();">
+                <span> Dosya Seç</span>
+            </button>
+            <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display: none;" onchange="handleFileSelect(event)">
+        </div>
+
+        <!-- File Info -->
+        <div id="fileInfo" class="file-info">
+            <div style="display: flex; align-items: center; gap: var(--spacing-md);">
+                <div style="font-size: 2rem;"></div>
+                <div style="flex: 1;">
+                    <h4 style="margin: 0 0 var(--spacing-xs) 0; color: #065F46;">Dosya Yüklendi</h4>
+                    <p style="margin: 0; color: #047857; font-size: 0.9rem;">
+                        <strong>Dosya:</strong> <span id="fileName"></span><br>
+                        <strong>Boyut:</strong> <span id="fileSize"></span><br>
+                        <strong>Satır:</strong> <span id="rowCount"></span><br>
+                        <strong>Sütun:</strong> <span id="columnCount"></span>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div id="progressBar" class="progress-bar">
+            <div id="progressFill" class="progress-fill" style="width: 0%;">0%</div>
+        </div>
+
+        <!-- Preview -->
+        <div id="previewSection" style="display: none;">
+            <h3 style="color: var(--secondary-color); margin-bottom: var(--spacing-md);">
+                 Veri nizleme (lk 5 satr)
+            </h3>
+            <div class="preview-table" id="previewTable"></div>
+        </div>
+
+        <!-- Continue Button -->
+        <button 
+            id="continueBtn" 
+            class="btn btn-primary" 
+            style="width: 100%; margin-top: var(--spacing-xl); font-size: 1.1rem; padding: var(--spacing-lg);" 
+            disabled
+            onclick="continueToMapping()"
+        >
+            <span>Sütun Eşleştirmesine Geç</span>
+        </button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+        // Check session
+        const session = JSON.parse(localStorage.getItem('userSession'));
+        if (!session) {
+            window.location.href = 'login.html';
+        }
+
+        let uploadedData = null;
+        let uploadedFileName = '';
+
+        // Drag and drop handlers
+        const uploadArea = document.getElementById('uploadArea');
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        // File select handler
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        }
+
+        // Handle file
+        function handleFile(file) {
+            uploadedFileName = file.name;
+            const fileSize = (file.size / 1024).toFixed(2) + ' KB';
+            const fileExtension = file.name.split('.').pop().toLowerCase();
+
+            console.log('File selected:', file.name, fileExtension);
+
+            // Show progress
+            document.getElementById('progressBar').classList.add('show');
+            updateProgress(20, 'Dosya okunuyor...');
+
+            if (fileExtension === 'csv') {
+                parseCSV(file);
+            } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+                parseExcel(file);
+            } else {
+                alert(' Desteklenmeyen dosya format! lütfen CSV veya Excel dosyas yükleyin.');
+                resetUpload();
+            }
+        }
+
+        // Parse CSV
+        function parseCSV(file) {
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                encoding: 'UTF-8',
+                complete: function(results) {
+                    updateProgress(60, 'Veri ileniyor...');
+                    
+                    if (results.data && results.data.length > 0) {
+                        uploadedData = results.data;
+                        displayFileInfo(results.data, results.meta.fields);
+                        updateProgress(100, 'Tamamland!');
+                        
+                        setTimeout(() => {
+                            document.getElementById('progressBar').classList.remove('show');
+                        }, 1000);
+                    } else {
+                        alert(' Dosya bo veya hatal!');
+                        resetUpload();
+                    }
+                },
+                error: function(error) {
+                    console.error('CSV parse error:', error);
+                    alert(' CSV dosyası okunamadı: ' + error.message);
+                    resetUpload();
+                }
+            });
+        }
+
+        // Parse Excel
+        function parseExcel(file) {
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                try {
+                    updateProgress(40, 'Excel dosyas okunuyor...');
+                    
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    updateProgress(60, 'Veri dntrlyor...');
+                    
+                    // Get first sheet
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                    
+                    if (jsonData && jsonData.length > 0) {
+                        uploadedData = jsonData;
+                        const columns = Object.keys(jsonData[0]);
+                        displayFileInfo(jsonData, columns);
+                        updateProgress(100, 'Tamamland!');
+                        
+                        setTimeout(() => {
+                            document.getElementById('progressBar').classList.remove('show');
+                        }, 1000);
+                    } else {
+                        alert(' Excel dosyası boş!');
+                        resetUpload();
+                    }
+                } catch (error) {
+                    console.error('Excel parse error:', error);
+                    alert(' Excel dosyası okunamadı: ' + error.message);
+                    resetUpload();
+                }
+            };
+            
+            reader.readAsArrayBuffer(file);
+        }
+
+        // Display file info
+        function displayFileInfo(data, columns) {
+            const fileSize = (JSON.stringify(data).length / 1024).toFixed(2) + ' KB';
+            
+            document.getElementById('fileName').textContent = uploadedFileName;
+            document.getElementById('fileSize').textContent = fileSize;
+            document.getElementById('rowCount').textContent = data.length.toLocaleString();
+            document.getElementById('columnCount').textContent = columns.length;
+            
+            document.getElementById('fileInfo').classList.add('show');
+            
+            // Show preview
+            displayPreview(data, columns);
+            
+            // Enable continue button
+            document.getElementById('continueBtn').disabled = false;
+        }
+
+        // Display preview
+        function displayPreview(data, columns) {
+            const previewData = data.slice(0, 5);
+            
+            let html = '<table><thead><tr>';
+            columns.forEach(col => {
+                html += `<th>${col}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+            
+            previewData.forEach(row => {
+                html += '<tr>';
+                columns.forEach(col => {
+                    const value = row[col] || '';
+                    const truncated = value.toString().length > 50 
+                        ? value.toString().substring(0, 50) + '...' 
+                        : value;
+                    html += `<td>${truncated}</td>`;
+                });
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table>';
+            
+            document.getElementById('previewTable').innerHTML = html;
+            document.getElementById('previewSection').style.display = 'block';
+        }
+
+        // Update progress
+        function updateProgress(percent, message) {
+            const fill = document.getElementById('progressFill');
+            fill.style.width = percent + '%';
+            fill.textContent = message || (percent + '%');
+        }
+
+        // Reset upload
+        function resetUpload() {
+            document.getElementById('progressBar').classList.remove('show');
+            document.getElementById('fileInfo').classList.remove('show');
+            document.getElementById('previewSection').style.display = 'none';
+            document.getElementById('continueBtn').disabled = true;
+            document.getElementById('fileInput').value = '';
+            uploadedData = null;
+        }
+
+        // Continue to mapping
+        async function continueToMapping() {
+            if (!uploadedData) {
+                alert(' lütfen önce bir dosya yükleyin!');
+                return;
+            }
+            
+            // Disable button
+            const btn = document.getElementById('continueBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span> Veri backend\'e gnderiliyor...</span>';
+            
+            try {
+                // Store uploaded data in localStorage
+                // Get username from session
+                const session = JSON.parse(localStorage.getItem('userSession') || '{}');
+                const username = session.username || 'demo';
+                
+                const dataInfo = {
+                    data: uploadedData,
+                    fileName: uploadedFileName,
+                    columns: Object.keys(uploadedData[0]),
+                    rowCount: uploadedData.length,
+                    username: username  // Add username
+                };
+                
+                localStorage.setItem('uploadedData', JSON.stringify(dataInfo));
+                
+                // Send data to backend
+                const response = await fetch('http://localhost:5001/api/upload_data', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(dataInfo)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    console.log('Data uploaded to backend:', result.info);
+                    
+                    // Save as selectedDataset for column_mapping.html to use
+                    localStorage.setItem('selectedDataset', JSON.stringify({
+                        fileName: uploadedFileName,
+                        rowCount: uploadedData.length,
+                        columns: Object.keys(uploadedData[0]),
+                        loadedAt: new Date().toISOString()
+                    }));
+                    
+                    // Redirect to column mapping
+                    window.location.href = 'column_mapping.html';
+                } else {
+                    throw new Error(result.error || 'Upload failed');
+                }
+                
+            } catch (error) {
+                console.error('Backend upload error:', error);
+                alert('Veri backend\'e gönderilemedi, ancak lokal olarak kaydedildi.\n\nHata: ' + error.message + '\n\nDevam edebilirsiniz.');
+                
+                // Save as selectedDataset even if backend fails
+                localStorage.setItem('selectedDataset', JSON.stringify({
+                    fileName: uploadedFileName,
+                    rowCount: uploadedData.length,
+                    columns: Object.keys(uploadedData[0]),
+                    loadedAt: new Date().toISOString()
+                }));
+                
+                // Still allow to continue even if backend upload fails
+                window.location.href = 'column_mapping.html';
+            }
+        }
+
+        // Go back
+        function goBack() {
+            if (uploadedData) {
+                if (!confirm('Yüklenen veri kaybolacak. Geri dönmek istediğinizden emin misiniz?')) {
+                    return;
+                }
+            }
+            window.location.href = 'data_selection.html';
+        }
+    </script>
+    <script src="stars.js"></script>
+</body>
+</html>
+

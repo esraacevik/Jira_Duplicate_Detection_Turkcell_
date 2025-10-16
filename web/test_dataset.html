@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dataset Test</title>
+</head>
+<body>
+    <h1>Dataset API Test</h1>
+    <div id="result"></div>
+    <script>
+        fetch('http://localhost:5001/api/available_datasets')
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                document.getElementById('result').innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            })
+            .catch(function(error) {
+                document.getElementById('result').innerHTML = '<pre>ERROR: ' + error.message + '</pre>';
+            });
+    </script>
+</body>
+</html>

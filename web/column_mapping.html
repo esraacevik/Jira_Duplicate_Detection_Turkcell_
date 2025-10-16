@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Column Mapping - Bug Report System</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .mapping-container {
+            max-width: 1000px;
+            margin: 50px auto;
+            padding: var(--spacing-2xl);
+        }
+        .mapping-card {
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(15px);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xl);
+            margin-bottom: var(--spacing-lg);
+            box-shadow: var(--shadow-md);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .column-row {
+            display: grid;
+            grid-template-columns: 200px 1fr 100px;
+            gap: var(--spacing-md);
+            align-items: center;
+            padding: var(--spacing-md);
+            border-bottom: 1px solid var(--gray-200);
+        }
+        .column-row:last-child {
+            border-bottom: none;
+        }
+        .column-label {
+            font-weight: 600;
+            color: var(--gray-700);
+        }
+        .column-preview {
+            font-size: 0.85rem;
+            color: #aaaaaa;
+            background: var(--gray-50);
+            padding: var(--spacing-sm);
+            border-radius: var(--radius-sm);
+        }
+        .checkbox-large {
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+        }
+        .info-box {
+            background: linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%);
+            border-left: 4px solid #0EA5E9;
+            padding: var(--spacing-lg);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--spacing-xl);
+        }
+        .preview-section {
+            background: var(--gray-50);
+            border: 2px dashed var(--gray-300);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-lg);
+            margin-top: var(--spacing-lg);
+        }
+        .selected-columns {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-sm);
+            margin-top: var(--spacing-md);
+        }
+        .column-badge {
+            background: var(--primary-color);
+            color: var(--secondary-color);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body style="background: linear-gradient(135deg, #0A0E27 0%, #1a1f3a 100%); min-height: 100vh;">
+    <div class="mapping-container">
+        <!-- Header -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-xl);">
+            <div>
+                <h1 style="color: #ffffff; margin-bottom: var(--spacing-xs);">
+                     Sütun Eşleştirme ve Konfigürasyon
+                </h1>
+                <p style="color: #aaaaaa;" id="dataSourceInfo">
+                    Cross-encoder'ın kullanacağı sütunları seçin
+                </p>
+            </div>
+            <button onclick="goBack()" class="btn btn-secondary">
+                 Geri
+            </button>
+        </div>
+
+        <!-- Data Source Banner -->
+        <div id="dataSourceBanner" style="display: none; background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%); border: 2px solid #10B981; padding: var(--spacing-lg); border-radius: var(--radius-lg); margin-bottom: var(--spacing-xl);">
+            <div style="display: flex; align-items: center; gap: var(--spacing-md);">
+                <div style="font-size: 2rem;"></div>
+                <div>
+                    <h4 style="margin: 0 0 var(--spacing-xs) 0; color: #065F46;">Yüklenen Veri Seti</h4>
+                    <p style="margin: 0; color: #047857; font-size: 0.9rem;" id="uploadedDataDetails"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Box -->
+        <div class="info-box">
+            <h3 style="margin: 0 0 var(--spacing-sm) 0; color: #0369A1;">
+                 İki Tip Sütun Seçimi Yapılacak
+            </h3>
+            <p style="margin: 0; color: #0C4A6E; font-size: 0.9rem;">
+                <strong>1) Cross-Encoder Sütunları:</strong> Benzer raporlar bulmak için kullanılacak (Summary, Description önerilir)<br>
+                <strong>2) Form Metadata Sütunları:</strong> Rapor formunda gösterilecek ve karşılaştırma için kullanılacak (Platform, App Version, vb.)
+            </p>
+        </div>
+
+        <!-- Cross-Encoder Columns Card -->
+        <div class="mapping-card">
+            <h3 style="margin: 0 0 var(--spacing-sm) 0; color: var(--secondary-color); display: flex; align-items: center; gap: 8px;">
+                <span style="background: #3B82F6; color: white; width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.9rem;">1</span>
+                Cross-Encoder Sütunları (Arama İçin)
+            </h3>
+            <p style="margin: var(--spacing-sm) 0 var(--spacing-lg) 0; font-size: 0.9rem; color: #aaaaaa;">
+                Benzer raporlar bulmak için hangi sütunlar kullanılsın? (Text içerikli sütunlar)
+            </p>
+
+            <!-- Column Rows -->
+            <div id="columnList">
+                <!-- Will be populated by JavaScript -->
+            </div>
+
+            <!-- Selected Columns Preview -->
+            <div class="preview-section">
+                <h4 style="margin: 0 0 var(--spacing-md) 0; color: var(--gray-700);">
+                     Seçilen Sütunlar (Cross-Encoder İçin)
+                </h4>
+                <div id="selectedColumnsPreview" class="selected-columns">
+                    <span style="color: var(--gray-500); font-style: italic;">Henüz sütun seçilmedi</span>
+                </div>
+                <p style="margin: var(--spacing-md) 0 0 0; font-size: 0.85rem; color: #aaaaaa;">
+                     En az 1, en fazla 5 sütun seçebilirsiniz. Önerilen: Summary + Description
+                </p>
+            </div>
+        </div>
+
+        <!-- Form Metadata Columns Card -->
+        <div class="mapping-card">
+            <h3 style="margin: 0 0 var(--spacing-sm) 0; color: var(--secondary-color); display: flex; align-items: center; gap: 8px;">
+                <span style="background: #F59E0B; color: white; width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.9rem;">2</span>
+                Form Metadata Sütunları (Karşılaştırma İçin)
+            </h3>
+            <p style="margin: var(--spacing-sm) 0 var(--spacing-lg) 0; font-size: 0.9rem; color: #aaaaaa;">
+                Rapor formunda gösterilecek ve karşılaştırma için kullanılacak sütunlar
+            </p>
+
+            <div style="background: #FFF9E6; border: 2px solid #F59E0B; border-radius: var(--radius-md); padding: var(--spacing-md); margin-bottom: var(--spacing-lg);">
+                <div style="display: flex; align-items: center; gap: var(--spacing-sm); margin-bottom: var(--spacing-sm);">
+                    <span style="font-size: 1.2rem;"></span>
+                    <strong style="color: #000;">Önemli Not:</strong>
+                </div>
+                <p style="margin: 0; font-size: 0.9rem; color: #555;">
+                    <strong>App Version</strong> sütunu genellikle önemlidir! Aynı versiyon için benzer raporlar görmek kritiktir.
+                </p>
+            </div>
+
+            <!-- Metadata Column Rows -->
+            <div id="metadataColumnList">
+                <!-- Will be populated by JavaScript -->
+            </div>
+
+            <!-- Selected Metadata Columns Preview -->
+            <div class="preview-section">
+                <h4 style="margin: 0 0 var(--spacing-md) 0; color: var(--gray-700);">
+                     Seçilen Metadata Sütunları
+                </h4>
+                <div id="selectedMetadataPreview" class="selected-columns">
+                    <span style="color: var(--gray-500); font-style: italic;">Henüz sütun seçilmedi</span>
+                </div>
+                <p style="margin: var(--spacing-md) 0 0 0; font-size: 0.85rem; color: #aaaaaa;">
+                     Önerilen: Platform, App Version, Application, Priority
+                </p>
+            </div>
+        </div>
+
+        <!-- Additional Settings Card -->
+        <div class="mapping-card">
+            <h3 style="margin: 0 0 var(--spacing-lg) 0; color: var(--secondary-color);">
+                Ek Ayarlar
+            </h3>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Embedding Model</label>
+                    <select id="embeddingModel" class="form-input form-select">
+                        <option value="paraphrase-multilingual-MiniLM-L12-v2" selected>
+                            paraphrase-multilingual-MiniLM-L12-v2 (oklu dil)
+                        </option>
+                        <option value="all-MiniLM-L6-v2">
+                            all-MiniLM-L6-v2 (hızlı)
+                        </option>
+                        <option value="all-mpnet-base-v2">
+                            all-mpnet-base-v2 (Yksek kalite)
+                        </option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Top-K Sonu</label>
+                    <input 
+                        type="number" 
+                        id="topK" 
+                        class="form-input"
+                        value="5"
+                        min="1"
+                        max="20"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">FAISS Index Type</label>
+                    <select id="indexType" class="form-input form-select">
+                        <option value="Flat" selected>Flat (Kesin, küçük veri setleri)</option>
+                        <option value="IVF">IVF (Hızlı, büyük veri setleri)</option>
+                        <option value="HNSW">HNSW (Çok hızlı, çok büyük veri)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Save Button -->
+        <button 
+            id="saveBtn" 
+            class="btn btn-primary" 
+            style="width: 100%; margin-top: var(--spacing-xl); font-size: 1.1rem; padding: var(--spacing-lg);"
+            onclick="saveConfiguration()"
+        >
+            <span>Kaydet ve Sistemi Başlat</span>
+        </button>
+    </div>
+
+    <script>
+        // Check session
+        const session = JSON.parse(localStorage.getItem('userSession'));
+        if (!session) {
+            window.location.href = 'login.html';
+        }
+
+        // Check data selection
+        const dataSelection = localStorage.getItem('dataSelection');
+        const uploadedDataInfo = JSON.parse(localStorage.getItem('uploadedData') || 'null');
+        const selectedDatasetInfo = JSON.parse(localStorage.getItem('selectedDataset') || 'null');
+        const API_BASE_URL = 'http://localhost:5001/api';
+
+        // Available columns - either from uploaded data or default
+        let COLUMNS = [];
+        let selectedColumns = [];  // Cross-encoder columns
+        let selectedMetadataColumns = [];  // Form metadata columns
+
+        // Load columns from backend or localStorage
+        async function loadColumns() {
+            // Priority 1: Check if a dataset was selected from dataset_selection.html
+            if (selectedDatasetInfo && selectedDatasetInfo.columns) {
+                console.log(' Using columns from selected dataset:', selectedDatasetInfo.fileName);
+                COLUMNS = selectedDatasetInfo.columns.map(col => ({
+                    name: col,
+                    description: getColumnDescription(col),
+                    recommended: isRecommendedColumn(col),
+                    example: getColumnExample(col)
+                }));
+                populateColumns();
+            }
+            // Priority 2: Check if new data was uploaded
+            else if (dataSelection === 'new' && uploadedDataInfo) {
+                console.log(' Using columns from uploaded data:', uploadedDataInfo.fileName);
+                COLUMNS = uploadedDataInfo.columns.map(col => ({
+                    name: col,
+                    description: 'Yüklenen veri sütunu',
+                    recommended: col.toLowerCase().includes('summary') || col.toLowerCase().includes('description') || col.toLowerCase().includes('zet') || col.toLowerCase().includes('aklama'),
+                    example: '...'
+                }));
+                populateColumns();
+            }
+            // Priority 3: Load from backend (current data)
+            else {
+                console.log(' Loading columns from backend...');
+                try {
+                    const response = await fetch(`${API_BASE_URL}/data_status`);
+                    const data = await response.json();
+                    
+                    // Check if custom data is loaded
+                    if (data.custom_data_loaded && data.custom_data_columns) {
+                        console.log(' Using custom data columns from backend');
+                        COLUMNS = data.custom_data_columns.map(col => ({
+                            name: col,
+                            description: getColumnDescription(col),
+                            recommended: isRecommendedColumn(col),
+                            example: getColumnExample(col)
+                        }));
+                    } else if (data.default_data_columns) {
+                        console.log(' Using default data columns from backend');
+                        COLUMNS = data.default_data_columns.map(col => ({
+                            name: col,
+                            description: getColumnDescription(col),
+                            recommended: isRecommendedColumn(col),
+                            example: getColumnExample(col)
+                        }));
+                    } else {
+                        console.warn(' No columns found, using fallback');
+                        useFallbackColumns();
+                    }
+                } catch (error) {
+                    console.error(' Failed to load columns from backend:', error);
+                    useFallbackColumns();
+                }
+                
+                populateColumns();
+            }
+        }
+
+        // Helper function to determine if a column is recommended for cross-encoder
+        function isRecommendedColumn(colName) {
+            const col = colName.toLowerCase();
+            return col.includes('summary') || col.includes('description') || 
+                   col.includes('zet') || col.includes('aklama');
+        }
+
+        // Helper function to determine if a column is recommended for metadata
+        function isRecommendedMetadata(colName) {
+            const col = colName.toLowerCase();
+            return col.includes('platform') || col.includes('app version') || 
+                   col.includes('version') || col.includes('application') ||
+                   col.includes('priority') || col.includes('component') ||
+                   col.includes('srm') || col.includes('uygulama');
+        }
+
+        // Helper function to get column description
+        function getColumnDescription(colName) {
+            const descriptions = {
+                'Summary': 'Bug zeti (ksa aklama)',
+                'Description': 'Detayl aklama (test steps, expected/observed)',
+                'Affects Version': 'Etkilenen versiyon',
+                'Component': 'Platform/Bileen',
+                'Priority': 'Öncelik seviyesi',
+                'Custom field (Severity)': 'Önem derecesi',
+                'Custom field (Problem Type)': 'Problem tipi',
+                'Custom field (Frequency)': 'Tekrar skl',
+                'Application': 'Uygulama ad',
+                'App Version': 'Uygulama versiyonu',
+                'Platform': 'letim sistemi platformu',
+                'Language': 'Rapor dili'
+            };
+            return descriptions[colName] || 'Veri sütunu';
+        }
+
+        // Helper function to get column example
+        function getColumnExample(colName) {
+            const examples = {
+                'Summary': 'BiP mesaj gnderilirken crash...',
+                'Description': 'Test Steps: 1. Open BiP 2. Send message...',
+                'Affects Version': 'Android 3.70.19',
+                'Component': 'Android Client',
+                'Priority': 'High',
+                'Custom field (Severity)': 'Critical',
+                'Custom field (Problem Type)': 'Crash',
+                'Custom field (Frequency)': 'Always',
+                'Application': 'BiP',
+                'App Version': '3.70.19',
+                'Platform': 'android',
+                'Language': 'tr'
+            };
+            return examples[colName] || '...';
+        }
+
+        // Fallback columns if backend fails
+        function useFallbackColumns() {
+            COLUMNS = [
+                { name: 'Summary', description: 'Bug zeti (ksa aklama)', recommended: true, example: 'BiP mesaj gnderilirken crash...' },
+                { name: 'Description', description: 'Detayl aklama (test steps, expected/observed)', recommended: true, example: 'Test Steps: 1. Open BiP 2. Send message...' },
+                { name: 'Affects Version', description: 'Etkilenen versiyon', recommended: false, example: 'Android 3.70.19' },
+                { name: 'Component', description: 'Platform/Bileen', recommended: false, example: 'Android Client' },
+                { name: 'Priority', description: 'Öncelik seviyesi', recommended: false, example: 'High' },
+                { name: 'Custom field (Severity)', description: 'Önem derecesi', recommended: false, example: 'Critical' },
+                { name: 'Custom field (Problem Type)', description: 'Problem tipi', recommended: false, example: 'Crash' },
+                { name: 'Custom field (Frequency)', description: 'Tekrar skl', recommended: false, example: 'Always' },
+                { name: 'Application', description: 'Uygulama ad', recommended: false, example: 'BiP' }
+            ];
+        }
+
+        // Populate column lists (both cross-encoder and metadata)
+        function populateColumns() {
+            // 1. Populate cross-encoder columns
+            const columnList = document.getElementById('columnList');
+            columnList.innerHTML = COLUMNS.map(col => `
+                <div class="column-row">
+                    <div>
+                        <div class="column-label">
+                            ${col.name}
+                            ${col.recommended ? '<span style="background: #10B981; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; margin-left: 4px;">ÖNERİLEN</span>' : ''}
+                        </div>
+                        <div style="font-size: 0.75rem; color: var(--gray-500);">${col.description}</div>
+                    </div>
+                    <div class="column-preview">${col.example}</div>
+                    <div style="text-align: center;">
+                        <input 
+                            type="checkbox" 
+                            class="checkbox-large" 
+                            id="col_${col.name}"
+                            ${col.recommended ? 'checked' : ''}
+                            onchange="toggleColumn('${col.name}')"
+                        >
+                    </div>
+                </div>
+            `).join('');
+            
+            // 2. Populate metadata columns
+            const metadataList = document.getElementById('metadataColumnList');
+            metadataList.innerHTML = COLUMNS.map(col => {
+                const isMetadata = isRecommendedMetadata(col.name);
+                return `
+                <div class="column-row">
+                    <div>
+                        <div class="column-label">
+                            ${col.name}
+                            ${isMetadata ? '<span style="background: #F59E0B; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; margin-left: 4px;">ÖNERİLEN</span>' : ''}
+                            ${col.name.toLowerCase().includes('app version') || col.name.toLowerCase().includes('version') ? '<span style="background: #EF4444; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; margin-left: 4px;">ÖNEMLİ</span>' : ''}
+                        </div>
+                        <div style="font-size: 0.75rem; color: var(--gray-500);">${col.description}</div>
+                    </div>
+                    <div class="column-preview">${col.example}</div>
+                    <div style="text-align: center;">
+                        <input 
+                            type="checkbox" 
+                            class="checkbox-large" 
+                            id="meta_${col.name}"
+                            ${isMetadata ? 'checked' : ''}
+                            onchange="toggleMetadataColumn('${col.name}')"
+                        >
+                    </div>
+                </div>
+            `}).join('');
+            
+            // Initialize with recommended columns
+            selectedColumns = [];
+            COLUMNS.filter(c => c.recommended).forEach(col => {
+                selectedColumns.push(col.name);
+            });
+            
+            // Initialize with recommended metadata columns
+            selectedMetadataColumns = [];
+            COLUMNS.filter(c => isRecommendedMetadata(c.name)).forEach(col => {
+                selectedMetadataColumns.push(col.name);
+            });
+            
+            updatePreview();
+            updateMetadataPreview();
+        }
+
+        // Toggle cross-encoder column selection
+        function toggleColumn(columnName) {
+            const index = selectedColumns.indexOf(columnName);
+            
+            if (index > -1) {
+                selectedColumns.splice(index, 1);
+            } else {
+                if (selectedColumns.length < 5) {
+                    selectedColumns.push(columnName);
+                } else {
+                    alert(' En fazla 5 sütun seebilirsiniz!');
+                    document.getElementById(`col_${columnName}`).checked = false;
+                    return;
+                }
+            }
+            
+            updatePreview();
+        }
+
+        // Toggle metadata column selection
+        function toggleMetadataColumn(columnName) {
+            const index = selectedMetadataColumns.indexOf(columnName);
+            
+            if (index > -1) {
+                selectedMetadataColumns.splice(index, 1);
+            } else {
+                selectedMetadataColumns.push(columnName);
+            }
+            
+            updateMetadataPreview();
+        }
+
+        // Update cross-encoder columns preview
+        function updatePreview() {
+            const preview = document.getElementById('selectedColumnsPreview');
+            
+            if (selectedColumns.length === 0) {
+                preview.innerHTML = '<span style="color: var(--gray-500); font-style: italic;">Henz sütun seilmedi</span>';
+            } else {
+                preview.innerHTML = selectedColumns.map(col => 
+                    `<span class="column-badge">${col}</span>`
+                ).join('');
+            }
+        }
+
+        // Update metadata columns preview
+        function updateMetadataPreview() {
+            const preview = document.getElementById('selectedMetadataPreview');
+            
+            if (selectedMetadataColumns.length === 0) {
+                preview.innerHTML = '<span style="color: var(--gray-500); font-style: italic;">Henz sütun seilmedi</span>';
+            } else {
+                preview.innerHTML = selectedMetadataColumns.map(col => 
+                    `<span class="column-badge" style="background: #F59E0B;">${col}</span>`
+                ).join('');
+            }
+        }
+
+        // Save configuration
+        async function saveConfiguration() {
+            // Validation
+            if (selectedColumns.length === 0) {
+                alert(' Cross-encoder için en az 1 sütun seçmelisiniz!');
+                return;
+            }
+            
+            if (selectedMetadataColumns.length === 0) {
+                alert(' Form metadata için en az 1 sütun seçmelisiniz! (Önerilen: Platform, App Version)');
+                return;
+            }
+            
+            const config = {
+                selectedColumns: selectedColumns,  // Cross-encoder columns
+                metadataColumns: selectedMetadataColumns,  // Form metadata columns
+                embeddingModel: document.getElementById('embeddingModel').value,
+                topK: parseInt(document.getElementById('topK').value),
+                indexType: document.getElementById('indexType').value,
+                configuredAt: new Date().toISOString()
+            };
+            
+            localStorage.setItem('systemConfig', JSON.stringify(config));
+            
+            // If custom data is uploaded, send selected columns to backend
+            if (dataSelection === 'new' && uploadedDataInfo) {
+                try {
+                    const response = await fetch('http://localhost:5001/api/update_selected_columns', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            selectedColumns: selectedColumns,
+                            metadataColumns: selectedMetadataColumns
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (!result.success) {
+                        console.error('Failed to update selected columns:', result.error);
+                        alert(' Seilen stunlar backend\'e gnderilemedi. lütfen tekrar deneyin.');
+                        return;
+                    }
+                    
+                    console.log(' Selected columns sent to backend:', selectedColumns);
+                    console.log(' Metadata columns sent to backend:', selectedMetadataColumns);
+                    
+                } catch (error) {
+                    console.error('Error sending selected columns:', error);
+                    alert(' Backend ile balant kurulamad. lütfen backend\'in altndan emin olun.');
+                    return;
+                }
+            }
+            
+            // Success message
+            const message = ` Konfigrasyon kaydedildi!
+
+Cross-Encoder Stunlar:
+${selectedColumns.join(', ')}
+
+Form Metadata Stunlar:
+${selectedMetadataColumns.join(', ')}
+
+imdi yeni rapor oluşturma sayfasna ynlendiriliyorsunuz.`;
+            
+            alert(message);
+            
+            // Redirect to create report page
+            window.location.href = 'create_report.html';
+        }
+
+        // Go back
+        function goBack() {
+            window.location.href = 'data_selection.html';
+        }
+
+        // Show data source info
+        if (dataSelection === 'new' && uploadedDataInfo) {
+            document.getElementById('dataSourceBanner').style.display = 'block';
+            document.getElementById('uploadedDataDetails').innerHTML = 
+                `<strong>Dosya:</strong> ${uploadedDataInfo.fileName}<br>` +
+                `<strong>Satır:</strong> ${uploadedDataInfo.rowCount.toLocaleString()}<br>` +
+                `<strong>Sütun:</strong> ${uploadedDataInfo.columns.length}`;
+            
+            document.getElementById('dataSourceInfo').textContent = 
+                'Yüklediğiniz veri setinden cross-encoder için sütunları seçin';
+        }
+
+        // Initialize - load columns from backend
+        loadColumns();
+    </script>
+    <script src="stars.js"></script>
+</body>
+</html>
+

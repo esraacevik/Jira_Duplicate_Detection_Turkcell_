@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Selection - Bug Report System</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .selection-container {
+            max-width: 900px;
+            margin: 50px auto;
+            padding: var(--spacing-2xl);
+        }
+        .welcome-banner {
+            background: linear-gradient(135deg, #FFCC00 0%, #FF9500 100%);
+            color: #000;
+            padding: var(--spacing-xl);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--spacing-2xl);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        /* Electric Card Animation */
+        .data-option {
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(15px);
+            border-radius: var(--radius-xl);
+            padding: var(--spacing-2xl);
+            margin-bottom: var(--spacing-lg);
+            cursor: pointer;
+            position: relative;
+            transition: all 0.3s;
+            overflow: hidden;
+        }
+        
+        /* Electric Border Effect */
+        .data-option::before {
+            content: '';
+            position: absolute;
+            inset: -3px;
+            border-radius: var(--radius-xl);
+            padding: 3px;
+            background: linear-gradient(
+                45deg,
+                #FFCC00,
+                #FF9500,
+                #00B5E2,
+                #FFCC00
+            );
+            -webkit-mask: 
+                linear-gradient(#fff 0 0) content-box, 
+                linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            opacity: 0;
+            transition: opacity 0.3s;
+            animation: electricBorder 3s linear infinite;
+            background-size: 300% 300%;
+        }
+        
+        @keyframes electricBorder {
+            0%, 100% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+        }
+        
+        .data-option:hover::before {
+            opacity: 1;
+        }
+        
+        /* Glow Effect on Hover */
+        .data-option::after {
+            content: '';
+            position: absolute;
+            inset: -20px;
+            border-radius: var(--radius-xl);
+            background: radial-gradient(
+                circle at center,
+                rgba(255, 204, 0, 0.3),
+                transparent 70%
+            );
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: -1;
+            filter: blur(20px);
+        }
+        
+        .data-option:hover::after {
+            opacity: 1;
+            animation: glowPulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes glowPulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 0.5;
+            }
+            50% {
+                transform: scale(1.1);
+                opacity: 1;
+            }
+        }
+        
+        .data-option:hover {
+            box-shadow: 
+                0 10px 40px rgba(255, 204, 0, 0.3),
+                0 0 80px rgba(255, 149, 0, 0.2),
+                inset 0 0 20px rgba(255, 204, 0, 0.1);
+            transform: translateY(-5px) scale(1.02);
+        }
+        
+        .data-option.selected {
+            background: linear-gradient(135deg, #FFFBF0 0%, #FFF9E6 100%);
+        }
+        
+        .data-option.selected::before {
+            opacity: 1;
+            animation: electricBorder 1.5s linear infinite;
+        }
+        
+        /* Electric Spark Animation */
+        .electric-spark {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #FFCC00;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #FFCC00, 0 0 20px #FF9500;
+            animation: sparkMove 2s linear infinite;
+            opacity: 0;
+        }
+        
+        .data-option:hover .electric-spark {
+            opacity: 1;
+        }
+        
+        @keyframes sparkMove {
+            0% {
+                top: 0;
+                left: 0;
+                opacity: 0;
+            }
+            25% {
+                top: 0;
+                left: 100%;
+                opacity: 1;
+            }
+            50% {
+                top: 100%;
+                left: 100%;
+                opacity: 1;
+            }
+            75% {
+                top: 100%;
+                left: 0;
+                opacity: 1;
+            }
+            100% {
+                top: 0;
+                left: 0;
+                opacity: 0;
+            }
+        }
+        
+        .option-icon {
+            font-size: 3rem;
+            margin-bottom: var(--spacing-md);
+            transition: transform 0.3s;
+        }
+        
+        .data-option:hover .option-icon {
+            transform: scale(1.2) rotate(5deg);
+            filter: drop-shadow(0 0 10px rgba(255, 204, 0, 0.6));
+        }
+        
+        .option-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--secondary-color);
+            margin-bottom: var(--spacing-sm);
+            transition: color 0.3s;
+        }
+        
+        .data-option:hover .option-title {
+            color: #FF9500;
+            text-shadow: 0 0 10px rgba(255, 149, 0, 0.3);
+        }
+        
+        .option-description {
+            color: #aaaaaa;
+            margin-bottom: var(--spacing-md);
+        }
+        .option-features {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .option-features li {
+            padding: var(--spacing-xs) 0;
+            color: var(--gray-700);
+            font-size: 0.9rem;
+            transition: transform 0.3s;
+        }
+        
+        .data-option:hover .option-features li {
+            transform: translateX(5px);
+        }
+        
+        .option-features li:before {
+            content: "";
+            color: #10B981;
+            font-weight: bold;
+            margin-right: var(--spacing-sm);
+        }
+    </style>
+</head>
+<body style="background: linear-gradient(135deg, #0A0E27 0%, #1a1f3a 100%); min-height: 100vh; position: relative;">
+    <!-- Animated Stars Background -->
+    <div id="starsBackground" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0;"></div>
+    
+    <div class="selection-container" style="position: relative; z-index: 1;">
+        <!-- Welcome Banner -->
+        <div class="welcome-banner">
+            <div>
+                <h1 style="margin: 0 0 var(--spacing-xs) 0;">Hoş Geldiniz, <span id="userName"></span>!</h1>
+                <p style="margin: 0; opacity: 0.9;">Duplicate detection sistemini kullanmaya başlayalım</p>
+            </div>
+            <button onclick="logout()" class="btn btn-secondary" style="background: rgba(0,0,0,0.2); color: white; border: none;">
+                Çıkış
+            </button>
+        </div>
+
+        <h2 style="color: #ffffff; margin-bottom: var(--spacing-xl);">
+            Hangi veri seti ile çalışmak istersiniz?
+        </h2>
+
+        <!-- Option 1: Use Existing Data -->
+        <div class="data-option" onclick="selectOption('existing')" id="optionExisting">
+            <div class="electric-spark"></div>
+            <div class="option-title">Mevcut Veri Setini Kullan</div>
+            <div class="option-description">
+                Sistemde yüklü olan <strong>data_with_application.csv</strong> dosyasını kullan
+            </div>
+            <ul class="option-features">
+                <li>14,268 adet bug raporu</li>
+                <li>Embeddings ve FAISS index hazır</li>
+                <li>Hızlı başlangıç (anında kullanıma hazır)</li>
+                <li>BiP, TV+, Fizy ve diğer Turkcell uygulamaları</li>
+            </ul>
+        </div>
+
+        <!-- Option 2: Upload New Data -->
+        <div class="data-option" onclick="selectOption('new')" id="optionNew">
+            <div class="electric-spark"></div>
+            <div class="option-title">Yeni Veri Seti Yükle</div>
+            <div class="option-description">
+                kendi CSV dosyanızı yükleyin ve sütun eşleştirmesi yapın
+            </div>
+            <ul class="option-features">
+                <li>CSV veya Excel dosyası yükleme</li>
+                <li>Sütun mapping (hangi sütun summary, description, vb.)</li>
+                <li>Cross-encoder için sütun seçimi</li>
+                <li>Otomatik embedding oluşturma</li>
+                <li>FAISS index otomatik oluşturulur</li>
+            </ul>
+        </div>
+
+        <!-- Continue Button -->
+        <button 
+            id="continueBtn" 
+            class="btn btn-primary" 
+            style="width: 100%; margin-top: var(--spacing-xl); font-size: 1.1rem; padding: var(--spacing-lg);" 
+            disabled
+            onclick="continueToNext()"
+        >
+            <span>Devam Et</span>
+        </button>
+    </div>
+
+    <script>
+        let selectedOption = null;
+        const API_BASE_URL = 'http://localhost:5001/api';
+
+        // Check if user is logged in
+        const session = JSON.parse(localStorage.getItem('userSession'));
+        if (!session) {
+            window.location.href = 'login.html';
+        }
+
+        // Display user name
+        document.getElementById('userName').textContent = session.name;
+
+        // Check for existing uploaded data on page load
+        checkForUploadedData();
+
+        async function checkForUploadedData() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/data_status`);
+                const data = await response.json();
+
+                if (data.customDataLoaded) {
+                    // Update the existing data option to show the uploaded data
+                    const optionExisting = document.getElementById('optionExisting');
+                    const optionTitle = optionExisting.querySelector('.option-title');
+                    const optionDesc = optionExisting.querySelector('.option-description');
+                    const optionFeatures = optionExisting.querySelector('.option-features');
+
+                    optionTitle.innerHTML = 'Mevcut Veri Setini Kullan <span style="background: #10B981; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; margin-left: 8px;">YÜKLÜ</span>';
+                    optionDesc.innerHTML = `Sistemde yüklü olan <strong>${data.fileName}</strong> dosyasını kullan`;
+                    optionFeatures.innerHTML = `
+                        <li>${data.rowCount.toLocaleString('tr-TR')} adet bug raporu</li>
+                        <li>Yüklenme tarihi: ${new Date(data.uploadedAt).toLocaleString('tr-TR')}</li>
+                        <li>${data.columnCount} adet sütun</li>
+                        <li>Hızlı başlangıç (anında kullanıma hazır)</li>
+                    `;
+                }
+            } catch (error) {
+                console.log('No custom data loaded, showing default info');
+            }
+        }
+
+        // Select option
+        function selectOption(option) {
+            selectedOption = option;
+            
+            // Remove previous selection
+            document.querySelectorAll('.data-option').forEach(el => {
+                el.classList.remove('selected');
+            });
+            
+            // Add selection
+            if (option === 'existing') {
+                document.getElementById('optionExisting').classList.add('selected');
+            } else {
+                document.getElementById('optionNew').classList.add('selected');
+            }
+            
+            // Enable continue button
+            document.getElementById('continueBtn').disabled = false;
+        }
+
+        // Continue to next page
+        function continueToNext() {
+            if (!selectedOption) return;
+            
+            // Store selection
+            localStorage.setItem('dataSelection', selectedOption);
+            
+            if (selectedOption === 'existing') {
+                // Go to dataset selection page to choose which dataset
+                window.location.href = 'dataset_selection.html';
+            } else {
+                // Go to upload page
+                window.location.href = 'data_upload.html';
+            }
+        }
+
+        // Logout
+        function logout() {
+            localStorage.removeItem('userSession');
+            localStorage.removeItem('dataSelection');
+            window.location.href = 'login.html';
+        }
+
+        // Create animated stars
+        (function() {
+            var starsContainer = document.getElementById('starsBackground');
+            for (var i = 0; i < 100; i++) {
+                var star = document.createElement('div');
+                star.style.position = 'absolute';
+                star.style.width = (Math.random() * 3 + 1) + 'px';
+                star.style.height = star.style.width;
+                star.style.background = '#FFCC00';
+                star.style.borderRadius = '50%';
+                star.style.left = Math.random() * 100 + '%';
+                star.style.animation = 'starFloat ' + (Math.random() * 20 + 10) + 's linear infinite';
+                star.style.animationDelay = Math.random() * 10 + 's';
+                starsContainer.appendChild(star);
+            }
+        })();
+    </script>
+    <style>
+        @keyframes starFloat {
+            0% {
+                transform: translateY(100vh);
+                opacity: 0;
+            }
+            10% {
+                opacity: 0.8;
+            }
+            90% {
+                opacity: 0.8;
+            }
+            100% {
+                transform: translateY(-100px);
+                opacity: 0;
+            }
+        }
+    </style>
+</body>
+</html>
+

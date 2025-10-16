@@ -1,9 +1,18 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Bug Report Duplicate Detection API Server
 ==========================================
 Flask API server for the hybrid search system
 """
+
+import sys
+import io
+
+# Fix Windows console encoding for emoji support
+if sys.platform == 'win32':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS, cross_origin
@@ -1033,7 +1042,7 @@ def internal_error(error):
 def main():
     """Main function to run the server"""
     print("\n" + "=" * 80)
-    print("🚀 BUG REPORT DUPLICATE DETECTION API SERVER")
+    print("BUG REPORT DUPLICATE DETECTION API SERVER")
     print("=" * 80)
     print("\nInitializing...")
     
@@ -1041,20 +1050,20 @@ def main():
     get_search_system()
     
     print("\n" + "=" * 80)
-    print("✅ SERVER READY!")
+    print("SERVER READY!")
     print("=" * 80)
-    print("\n📍 Endpoints:")
-    print("   • http://localhost:5000/api/health     - Health check")
-    print("   • http://localhost:5000/api/search     - Search similar reports (POST)")
-    print("   • http://localhost:5000/api/stats      - Get system statistics")
-    print("   • http://localhost:5000/api/applications - Get available applications")
-    print("\n🌐 Frontend:")
-    print("   • Open web/index.html in your browser")
-    print("\n💡 Usage:")
-    print("   • Frontend will automatically connect to this API")
-    print("   • Or use curl/Postman for direct API testing")
+    print("\nEndpoints:")
+    print("   - http://localhost:5001/api/health     - Health check")
+    print("   - http://localhost:5001/api/search     - Search similar reports (POST)")
+    print("   - http://localhost:5001/api/stats      - Get system statistics")
+    print("   - http://localhost:5001/api/applications - Get available applications")
+    print("\nFrontend:")
+    print("   - Open web/index.html in your browser")
+    print("\nUsage:")
+    print("   - Frontend will automatically connect to this API")
+    print("   - Or use curl/Postman for direct API testing")
     print("\n" + "=" * 80)
-    print("\n🔥 Starting Flask server...\n")
+    print("\nStarting Flask server...\n")
     
     # Run Flask server
     app.run(

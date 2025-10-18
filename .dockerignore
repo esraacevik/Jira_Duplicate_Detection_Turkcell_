@@ -4,54 +4,59 @@ __pycache__/
 *$py.class
 *.so
 .Python
-env/
 venv/
+env/
 ENV/
-*.egg-info/
-dist/
-build/
 
 # IDEs
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
+
+# OS
 .DS_Store
+Thumbs.db
 
 # Git
 .git/
 .gitignore
-.gitattributes
 
-# Documentation (not needed in container)
-*.md
-docs/
+# Large data files (will be uploaded by users)
+data/duplike1full.xlsx
+data/data_cleaned.csv
+data/data_with_*.csv
+data/preprocessed/
 
-# Tests (not needed in production)
-tests/
-*.ipynb
-notebooks/
-
-# Firebase (local files)
+# Firebase
 .firebase/
 .firebaserc
-firebase.json
-firebase-service-account.json
 
-# Railway (not needed)
-railway.json
-RAILWAY_*.md
+# Test files
+test_*.py
+tests/
 
-# Large data files (will be generated at runtime)
-data/preprocessed/
-src/data/preprocessed/
-*.parquet
-*.npy
-*.bin
+# Notebooks
+notebooks/
 
-# User data (will be created at runtime)
-data/user_embeddings/
+# Web files (hosted on Firebase)
+web/
 
-# Logs
+# Documentation
+*.md
+!README_HF.md
+COLUMN_SELECTION_GUIDE.md
+CUSTOM_DATA_INTEGRATION.md
+DUPLICATE_REPLACEMENT_FEATURE.md
+firebase_setup_guide.md
+KULLANIM_KILAVUZU.md
+PROJECT_DOCUMENTATION.md
+WEB_APP_README.md
+
+# Scripts
+start_web_app.sh
+
+# Temporary files
 *.log
-
+*.tmp

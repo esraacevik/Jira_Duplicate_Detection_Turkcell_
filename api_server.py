@@ -983,21 +983,40 @@ def upload_data():
             try:
                 # Read file content as bytes
                 file_content = file.read()
+                file_size_mb = len(file_content) / (1024 * 1024)
+                logger.info(f"📦 File content read: {file_size_mb:.2f} MB")
                 
-                # Try different encodings
-                for encoding in ['utf-8', 'latin-1', 'iso-8859-1', 'cp1252']:
-                    try:
-                        df = pd.read_csv(io.BytesIO(file_content), encoding=encoding)
-                        logger.info(f"✅ CSV parsed successfully with encoding: {encoding}")
+                if len(file_content) == 0:
+                    raise ValueError("File is empty (0 bytes)")
+                
+                # Try different delimiters and encodings
+                delimiters = [',', ';', '\t', '|']
+                encodings = ['utf-8', 'latin-1', 'iso-8859-1', 'cp1252']
+                
+                df = None
+                for delimiter in delimiters:
+                    for encoding in encodings:
+                        try:
+                            df = pd.read_csv(
+                                io.BytesIO(file_content), 
+                                encoding=encoding,
+                                delimiter=delimiter,
+                                on_bad_lines='skip',  # Skip problematic lines
+                                skipinitialspace=True,
+                                engine='python'  # Python engine is more forgiving
+                            )
+                            # Check if we got valid data
+                            if len(df) > 0 and len(df.columns) > 1:
+                                logger.info(f"✅ CSV parsed successfully: encoding={encoding}, delimiter='{delimiter}'")
+                                logger.info(f"📊 DataFrame loaded: {len(df)} rows, {len(df.columns)} columns")
+                                break
+                        except (UnicodeDecodeError, pd.errors.ParserError) as e:
+                            continue
+                    if df is not None and len(df) > 0:
                         break
-                    except UnicodeDecodeError:
-                        continue
-                else:
-                    # If all encodings fail, try with error handling
-                    df = pd.read_csv(io.BytesIO(file_content), encoding='utf-8', errors='ignore')
-                    logger.warning("⚠️ Used utf-8 with error='ignore' due to encoding issues")
                 
-                logger.info(f"📊 DataFrame loaded: {len(df)} rows, {len(df.columns)} columns")
+                if df is None or len(df) == 0:
+                    raise ValueError("Could not parse CSV file with any encoding/delimiter combination")
                 
             except Exception as e:
                 logger.error(f"❌ Error reading CSV: {e}")

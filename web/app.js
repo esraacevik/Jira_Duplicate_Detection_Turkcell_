@@ -1,7 +1,7 @@
 // =============================================
 // Configuration
 // =============================================
-const API_BASE_URL = 'http://localhost:5001/api';  // Port 5001 (macOS AirPlay uses 5000)
+const API_BASE_URL = 'https://esracevik01-jira-duplicate-detection.hf.space/api';  // Hugging Face Spaces backend
 const MIN_SEARCH_LENGTH = 10;
 const DEBOUNCE_DELAY = 500;
 

@@ -1,5 +1,5 @@
 // Configuration
-const API_BASE_URL = 'http://localhost:5001/api';
+const API_BASE_URL = 'https://esracevik01-jira-duplicate-detection.hf.space/api';
 
 // State
 let searchTimeout = null;

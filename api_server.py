@@ -944,15 +944,15 @@ def upload_data():
     """
     Upload custom data from frontend
     
-    Request Body:
-    {
-        "data": [...],  # Array of objects
-        "fileName": "data.csv",
-        "columns": ["col1", "col2", ...],
-        "rowCount": 100,
-        "userId": "firebase-user-id",  # REQUIRED
-        "textColumns": ["Summary", "Description"]  # Optional
-    }
+    Now supports both JSON and FormData (multipart/form-data) uploads
+    
+    FormData fields:
+        - file: CSV file
+        - userId: User ID
+        - username: Username
+        - fileName: File name
+        - rowCount: Row count (optional)
+        - columns: JSON string of columns (optional)
     """
     try:
         import pandas as pd
@@ -960,37 +960,93 @@ def upload_data():
         import os
         import json
         import sys
+        import io
         
         # Add src to path for imports
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
         from user_embedding_pipeline import create_user_embeddings
         
-        # Get request data
-        data = request.get_json()
-        
-        if not data or 'data' not in data:
-            return jsonify({
-                'success': False,
-                'error': 'Missing data field'
-            }), 400
-        
-        # Get user ID (REQUIRED)
-        user_id = data.get('userId') or data.get('username', 'anonymous')
-        logger.info(f"📥 Upload request from user: {user_id}")
-        
-        # Store custom data for THIS USER
-        df = pd.DataFrame(data['data'])
-        user_data_store = {
-            'data': df,
-            'fileName': data.get('fileName', 'uploaded_data.csv'),
-            'rowCount': len(data['data']),
-            'columns': data.get('columns', list(data['data'][0].keys()) if data['data'] else []),
-            'uploadedAt': datetime.now().isoformat(),
-            'loaded': True,
-            'userId': user_id,
-            'selectedColumns': [],
-            'metadataColumns': []
-        }
+        # Check if request is FormData (multipart/form-data) or JSON
+        if request.files and 'file' in request.files:
+            # FormData upload (for large files)
+            logger.info("📁 Received FormData upload (CSV file)")
+            
+            file = request.files['file']
+            user_id = request.form.get('userId', 'anonymous')
+            username = request.form.get('username', 'demo')
+            file_name = request.form.get('fileName', file.filename)
+            
+            logger.info(f"📥 Upload request from user: {user_id}")
+            logger.info(f"📁 File: {file_name} ({file.content_length} bytes)")
+            
+            # Read CSV file directly with pandas
+            try:
+                # Read file content as bytes
+                file_content = file.read()
+                
+                # Try different encodings
+                for encoding in ['utf-8', 'latin-1', 'iso-8859-1', 'cp1252']:
+                    try:
+                        df = pd.read_csv(io.BytesIO(file_content), encoding=encoding)
+                        logger.info(f"✅ CSV parsed successfully with encoding: {encoding}")
+                        break
+                    except UnicodeDecodeError:
+                        continue
+                else:
+                    # If all encodings fail, try with error handling
+                    df = pd.read_csv(io.BytesIO(file_content), encoding='utf-8', errors='ignore')
+                    logger.warning("⚠️ Used utf-8 with error='ignore' due to encoding issues")
+                
+                logger.info(f"📊 DataFrame loaded: {len(df)} rows, {len(df.columns)} columns")
+                
+            except Exception as e:
+                logger.error(f"❌ Error reading CSV: {e}")
+                return jsonify({
+                    'success': False,
+                    'error': f'CSV okuma hatası: {str(e)}'
+                }), 400
+            
+            user_data_store = {
+                'data': df,
+                'fileName': file_name,
+                'rowCount': len(df),
+                'columns': df.columns.tolist(),
+                'uploadedAt': datetime.now().isoformat(),
+                'loaded': True,
+                'userId': user_id,
+                'selectedColumns': [],
+                'metadataColumns': []
+            }
+            
+        else:
+            # JSON upload (for backwards compatibility with small files)
+            logger.info("📝 Received JSON upload")
+            data = request.get_json()
+            
+            if not data or 'data' not in data:
+                return jsonify({
+                    'success': False,
+                    'error': 'Missing data field'
+                }), 400
+            
+            # Get user ID (REQUIRED)
+            user_id = data.get('userId') or data.get('username', 'anonymous')
+            username = data.get('username', 'demo')
+            logger.info(f"📥 Upload request from user: {user_id}")
+            
+            # Store custom data for THIS USER
+            df = pd.DataFrame(data['data'])
+            user_data_store = {
+                'data': df,
+                'fileName': data.get('fileName', 'uploaded_data.csv'),
+                'rowCount': len(data['data']),
+                'columns': data.get('columns', list(data['data'][0].keys()) if data['data'] else []),
+                'uploadedAt': datetime.now().isoformat(),
+                'loaded': True,
+                'userId': user_id,
+                'selectedColumns': [],
+                'metadataColumns': []
+            }
         
         # Save to user-specific store
         set_user_data_store(user_id, user_data_store)

@@ -485,42 +485,40 @@
             btn.innerHTML = '<span>⏳ Veri backend\'e gönderiliyor...</span>';
             
             try {
-                // Store uploaded data in localStorage
-                // Get username from session
+                // Get user session for userId
                 const session = JSON.parse(localStorage.getItem('userSession') || '{}');
+                const userId = session.uid || session.username || 'anonymous';
                 const username = session.username || 'demo';
                 
-                const dataInfo = {
-                    data: uploadedData,
-                    fileName: uploadedFileName,
-                    columns: Object.keys(uploadedData[0]),
-                    rowCount: uploadedData.length,
-                    username: username  // Add username
-                };
-                
-                localStorage.setItem('uploadedData', JSON.stringify(dataInfo));
-                
-                // Get user session for userId
-                const userSession = JSON.parse(localStorage.getItem('userSession') || '{}');
-                const userId = userSession.uid || userSession.username || 'anonymous';
-                
-                // Add userId to dataInfo
-                dataInfo.userId = userId;
-                
-                console.log('📤 Uploading data for user:', userId);
+                console.log('📤 Uploading CSV file for user:', userId);
+                console.log('📁 File name:', uploadedFileName);
+                console.log('📊 Row count:', uploadedData.length);
                 
                 // Show embedding progress modal
                 showEmbeddingModal();
                 updateEmbeddingProgress(10, '📤 Veri backend\'e gönderiliyor...');
                 
-                // Send data to backend
+                // Use FormData to send file directly (avoids JSON size limits)
+                const formData = new FormData();
+                
+                // Get the original file from file input
+                const fileInput = document.getElementById('csvFile');
+                if (fileInput.files[0]) {
+                    formData.append('file', fileInput.files[0]);
+                    formData.append('userId', userId);
+                    formData.append('username', username);
+                    formData.append('fileName', uploadedFileName);
+                    formData.append('rowCount', uploadedData.length);
+                    formData.append('columns', JSON.stringify(Object.keys(uploadedData[0])));
+                } else {
+                    throw new Error('File not found. Please select a file again.');
+                }
+                
+                // Send data to backend using FormData (no Content-Type header, let browser set it)
                 const API_BASE_URL = 'https://esracevik01-jira-duplicate-detection.hf.space/api';
                 const response = await fetch(`${API_BASE_URL}/upload_data`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(dataInfo)
+                    body: formData  // FormData automatically sets multipart/form-data
                 });
                 
                 updateEmbeddingProgress(30, '🔄 Veri işleniyor...');

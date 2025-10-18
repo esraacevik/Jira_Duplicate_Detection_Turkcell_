@@ -981,7 +981,7 @@ def upload_data():
         
         # Save to user-specific datasets list
         username = data.get('username', 'demo')
-        user_datasets_dir = os.path.join('data', 'user_datasets')
+        user_datasets_dir = os.path.join(DATA_BASE_DIR, 'user_datasets')
         os.makedirs(user_datasets_dir, exist_ok=True)
         
         user_datasets_file = os.path.join(user_datasets_dir, f'{username}.json')
@@ -1305,7 +1305,7 @@ def get_available_datasets():
         logger.info(f"📋 Getting datasets for user: {username}")
         
         # Add user-specific datasets from localStorage data
-        user_datasets_file = os.path.join(data_dir, 'user_datasets', f'{username}.json')
+        user_datasets_file = os.path.join(DATA_BASE_DIR, 'user_datasets', f'{username}.json')
         if os.path.exists(user_datasets_file):
             import json
             with open(user_datasets_file, 'r') as f:

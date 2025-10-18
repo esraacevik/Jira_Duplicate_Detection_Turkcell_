@@ -36,11 +36,14 @@ user_data_stores = {}
 # Initialize feature extractor
 feature_extractor = TextFeatureExtractor()
 
+# Data directory - use /tmp in production (Hugging Face Spaces), data/ locally
+DATA_BASE_DIR = os.getenv('DATA_DIR', '/tmp' if os.getenv('SPACE_ID') else 'data')
+
 def get_user_data_store(user_id: str) -> dict:
     """Get data store for a specific user - loads from disk if exists"""
     if user_id not in user_data_stores:
         # Check if user has data on disk
-        user_embeddings_dir = Path('data/user_embeddings') / user_id
+        user_embeddings_dir = Path(DATA_BASE_DIR) / 'user_embeddings' / user_id
         metadata_file = user_embeddings_dir / 'metadata.json'
         
         if metadata_file.exists():
@@ -802,12 +805,12 @@ def create_report():
             report_id = user_store['rowCount']
             
             # Save to user's CSV file (both in user_data and user_embeddings)
-            csv_path = f"data/user_data/{user_store.get('fileName', 'custom_data.csv')}"
+            csv_path = f"{DATA_BASE_DIR}/user_data/{user_store.get('fileName', 'custom_data.csv')}"
             os.makedirs(os.path.dirname(csv_path), exist_ok=True)
             user_store['data'].to_csv(csv_path, index=False, encoding='utf-8')
             
             # Also save to user_embeddings directory for persistence
-            user_embeddings_dir = Path('data/user_embeddings') / user_id
+            user_embeddings_dir = Path(DATA_BASE_DIR) / 'user_embeddings' / user_id
             user_embeddings_dir.mkdir(parents=True, exist_ok=True)
             user_data_file = user_embeddings_dir / 'data.csv'
             user_store['data'].to_csv(user_data_file, index=False)
@@ -1047,7 +1050,7 @@ def upload_data():
                 logger.info(f"✅ Embeddings created successfully for user: {user_id}")
                 
                 # Save original data to disk for persistence
-                user_embeddings_dir = Path('data/user_embeddings') / user_id
+                user_embeddings_dir = Path(DATA_BASE_DIR) / 'user_embeddings' / user_id
                 data_file = user_embeddings_dir / 'data.csv'
                 try:
                     df.to_csv(data_file, index=False)
@@ -1058,7 +1061,7 @@ def upload_data():
                 # Update user store with embedding info
                 user_store = get_user_data_store(user_id)
                 user_store['embeddingsCreated'] = True
-                user_store['embeddingsPath'] = f"data/user_embeddings/{user_id}"
+                user_store['embeddingsPath'] = f"{DATA_BASE_DIR}/user_embeddings/{user_id}"
                 set_user_data_store(user_id, user_store)
             else:
                 logger.warning(f"⚠️ Embedding creation failed for user: {user_id}")
@@ -1134,7 +1137,7 @@ def update_selected_columns():
         
         # Also update metadata.json for persistence
         try:
-            user_embeddings_dir = Path('data/user_embeddings') / user_id
+            user_embeddings_dir = Path(DATA_BASE_DIR) / 'user_embeddings' / user_id
             metadata_file = user_embeddings_dir / 'metadata.json'
             if metadata_file.exists():
                 import json
@@ -1586,7 +1589,7 @@ def extract_features_endpoint():
         user_store['columns'] = list(df_extracted.columns)
         
         # Save to disk
-        user_embeddings_dir = Path('data/user_embeddings') / user_id
+        user_embeddings_dir = Path(DATA_BASE_DIR) / 'user_embeddings' / user_id
         user_embeddings_dir.mkdir(parents=True, exist_ok=True)
         data_file = user_embeddings_dir / 'data.csv'
         df_extracted.to_csv(data_file, index=False)

@@ -1452,8 +1452,9 @@ def main():
     print("✅ SERVER READY!")
     print("=" * 80)
     
-    # Get port from environment (Railway sets this)
-    port = int(os.getenv('PORT', 5001))
+    # Get port from environment
+    # Railway sets PORT, Hugging Face Spaces uses 7860, local default is 5001
+    port = int(os.getenv('PORT', 7860))
     
     print(f"\n📍 Server will start on port: {port}")
     print("\n📍 Endpoints:")

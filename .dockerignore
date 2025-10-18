@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation (not needed in container)
+*.md
+docs/
+
+# Tests (not needed in production)
+tests/
+*.ipynb
+notebooks/
+
+# Firebase (local files)
+.firebase/
+.firebaserc
+firebase.json
+firebase-service-account.json
+
+# Railway (not needed)
+railway.json
+RAILWAY_*.md
+
+# Large data files (will be generated at runtime)
+data/preprocessed/
+src/data/preprocessed/
+*.parquet
+*.npy
+*.bin
+
+# User data (will be created at runtime)
+data/user_embeddings/
+
+# Logs
+*.log
+

@@ -5,13 +5,18 @@ Bug Report Duplicate Detection API Server
 Flask API server for the hybrid search system
 """
 
+import os
+# Set cache directories for Hugging Face models BEFORE importing transformers/sentence-transformers
+os.environ['HF_HOME'] = '/tmp/huggingface_cache'
+os.environ['TRANSFORMERS_CACHE'] = '/tmp/transformers_cache'
+os.environ['SENTENCE_TRANSFORMERS_HOME'] = '/tmp/sentence_transformers_cache'
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS, cross_origin
 from hybrid_search import HybridSearch
 import logging
 from typing import Dict, List, Optional
 import time
-import os
 from pathlib import Path
 from src.text_feature_extractor import TextFeatureExtractor
 

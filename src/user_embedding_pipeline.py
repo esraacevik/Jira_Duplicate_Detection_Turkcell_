@@ -55,7 +55,10 @@ class UserEmbeddingPipeline:
         """Embedding modelini yükle"""
         if self.model is None:
             logger.info(f"📥 Loading embedding model: {self.model_name}")
-            self.model = SentenceTransformer(self.model_name)
+            # Use /tmp for cache on Hugging Face Spaces (writeable directory)
+            cache_folder = '/tmp/sentence_transformers_cache'
+            os.makedirs(cache_folder, exist_ok=True)
+            self.model = SentenceTransformer(self.model_name, cache_folder=cache_folder)
             logger.info("✅ Model loaded successfully")
         return self.model
     

@@ -27,13 +27,6 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Pre-download the embedding model to cache
-RUN python -c "from sentence_transformers import SentenceTransformer; \
-    import os; \
-    os.makedirs('/tmp/sentence_transformers_cache', exist_ok=True); \
-    model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2', cache_folder='/tmp/sentence_transformers_cache'); \
-    print('✅ Model pre-downloaded successfully')"
-
 # Copy application code
 COPY . .
 

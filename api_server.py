@@ -739,6 +739,10 @@ def create_report():
             custom_row = {col: '' for col in user_store['data'].columns}
             
             # Map ALL form data fields to custom columns dynamically
+            logger.info(f"🗺️  Mapping form data to columns:")
+            logger.info(f"   Form data keys: {list(data.keys())}")
+            logger.info(f"   Available columns: {user_store['data'].columns.tolist()}")
+            
             for key, value in data.items():
                 # Try to find matching column (exact match or partial match)
                 for col in user_store['data'].columns:
@@ -748,25 +752,27 @@ def create_report():
                     # Exact match or partial match
                     if col_lower == key_lower or key_lower in col_lower or col_lower in key_lower:
                         custom_row[col] = value
+                        logger.info(f"   ✓ Mapped '{key}' → '{col}' = '{str(value)[:50]}'")
                         break
             
-            # Also try common mappings
+            # Also try common mappings - ALWAYS OVERRIDE with latest data
             for col in user_store['data'].columns:
                 col_lower = col.lower()
                 if 'summary' in col_lower or 'özet' in col_lower:
-                    if not custom_row[col]:  # Only if not already set
+                    # Always use the data from form, override any existing value
+                    if 'summary' in data or 'özet' in data:
                         custom_row[col] = data.get('summary', data.get('özet', ''))
                 elif 'description' in col_lower or 'açıklama' in col_lower:
-                    if not custom_row[col]:
+                    if 'description' in data or 'açıklama' in data:
                         custom_row[col] = data.get('description', data.get('açıklama', ''))
                 elif 'priority' in col_lower or 'öncelik' in col_lower:
-                    if not custom_row[col]:
+                    if 'priority' in data or 'öncelik' in data:
                         custom_row[col] = data.get('priority', data.get('öncelik', ''))
                 elif 'component' in col_lower or 'platform' in col_lower:
-                    if not custom_row[col]:
+                    if 'component' in data or 'platform' in data:
                         custom_row[col] = data.get('component', data.get('platform', ''))
                 elif 'application' in col_lower or 'uygulama' in col_lower:
-                    if not custom_row[col]:
+                    if 'application' in data or 'uygulama' in data:
                         custom_row[col] = data.get('application', data.get('uygulama', application))
             
             # If replacing an old report, delete it first

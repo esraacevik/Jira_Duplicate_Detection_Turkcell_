@@ -1071,7 +1071,7 @@ def upload_data():
         set_user_data_store(user_id, user_data_store)
         
         # Save to user-specific datasets list
-        username = data.get('username', 'demo')
+        # username is already defined in both FormData and JSON branches above
         user_datasets_dir = os.path.join(DATA_BASE_DIR, 'user_datasets')
         os.makedirs(user_datasets_dir, exist_ok=True)
         
@@ -1084,6 +1084,9 @@ def upload_data():
         else:
             user_datasets = []
         
+        # Calculate file size from DataFrame
+        file_size_mb = user_data_store['data'].memory_usage(deep=True).sum() / (1024 * 1024)
+        
         # Add new dataset to user's list
         dataset_info = {
             'name': user_data_store['fileName'].replace('.csv', '').replace('_', ' ').title(),
@@ -1092,7 +1095,7 @@ def upload_data():
             'rowCount': user_data_store['rowCount'],
             'columns': user_data_store['columns'],
             'columnCount': len(user_data_store['columns']),
-            'fileSize': f"{len(str(data['data'])) / (1024*1024):.2f} MB",
+            'fileSize': f"{file_size_mb:.2f} MB",
             'lastModified': datetime.now().strftime('%Y-%m-%d %H:%M'),
             'type': 'user',
             'owner': username

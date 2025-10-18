@@ -15,7 +15,7 @@ firebase.initializeApp(firebaseConfig);
 
 // Get Firebase services
 const auth = firebase.auth();
-const db = firebase.firestore();
+// Note: Firestore not used - data stored in backend
 
 // Optional: Initialize Analytics
 try {
@@ -28,5 +28,4 @@ try {
 console.log('🔥 Firebase initialized successfully!');
 console.log('✅ Project: jira-duplicate-detection');
 console.log('✅ Authentication: Ready');
-console.log('✅ Firestore: Ready');
 

@@ -264,6 +264,7 @@
 
         let uploadedData = null;
         let uploadedFileName = '';
+        let uploadedFile = null;  // Store the actual File object for FormData upload
 
         // Drag and drop handlers
         const uploadArea = document.getElementById('uploadArea');
@@ -297,6 +298,7 @@
 
         // Handle file
         function handleFile(file) {
+            uploadedFile = file;  // Store file for later FormData upload
             uploadedFileName = file.name;
             const fileSize = (file.size / 1024).toFixed(2) + ' KB';
             const fileExtension = file.name.split('.').pop().toLowerCase();
@@ -501,15 +503,21 @@
                 // Use FormData to send file directly (avoids JSON size limits)
                 const formData = new FormData();
                 
-                // Get the original file from file input
-                const fileInput = document.getElementById('csvFile');
-                if (fileInput.files[0]) {
-                    formData.append('file', fileInput.files[0]);
+                // Use the stored file object
+                if (uploadedFile) {
+                    formData.append('file', uploadedFile);
                     formData.append('userId', userId);
                     formData.append('username', username);
                     formData.append('fileName', uploadedFileName);
                     formData.append('rowCount', uploadedData.length);
                     formData.append('columns', JSON.stringify(Object.keys(uploadedData[0])));
+                    
+                    console.log('📤 FormData prepared:', {
+                        fileName: uploadedFileName,
+                        fileSize: uploadedFile.size,
+                        rowCount: uploadedData.length,
+                        userId: userId
+                    });
                 } else {
                     throw new Error('File not found. Please select a file again.');
                 }

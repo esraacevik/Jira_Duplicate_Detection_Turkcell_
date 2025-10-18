@@ -379,13 +379,16 @@
                 
                 const response = await fetch(`${API_BASE_URL}/data_status?user_id=${encodeURIComponent(userId)}`);
                 const data = await response.json();
+                
+                console.log('📊 Data status response:', data);
+                console.log('👤 User ID:', userId);
 
                 const optionExisting = document.getElementById('optionExisting');
                 const optionTitle = optionExisting.querySelector('.option-title');
                 const optionDesc = document.getElementById('existingDataDesc');
                 const optionFeatures = document.getElementById('existingDataFeatures');
 
-                if (data.customDataLoaded) {
+                if (data.custom_data_loaded) {
                     // Enable the existing data option
                     optionExisting.style.opacity = '1';
                     optionExisting.style.cursor = 'pointer';
@@ -396,8 +399,8 @@
                     optionDesc.innerHTML = `Sistemde yüklü olan <strong>${data.fileName}</strong> dosyasını kullan`;
                     optionFeatures.innerHTML = `
                         <li>✅ ${data.rowCount.toLocaleString('tr-TR')} adet rapor</li>
-                        <li>📅 Yüklenme: ${new Date(data.uploadedAt).toLocaleString('tr-TR')}</li>
-                        <li>📊 ${data.columnCount} adet sütun</li>
+                        <li>📅 ${data.embeddingsCreated ? 'Embedding hazır ✅' : 'Embedding oluşturuluyor ⏳'}</li>
+                        <li>📊 ${(data.custom_data_columns || []).length} adet sütun</li>
                         <li>⚡ Hızlı başlangıç (anında kullanıma hazır)</li>
                     `;
                 } else {

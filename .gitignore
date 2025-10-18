@@ -117,5 +117,11 @@ data/user_datasets/
 data/test_*.csv
 data/embedding_outputs/
 
+# Large default data files (not needed in production - too large for HF)
+data/data_cleaned.csv
+data/data_with_*.csv
+*.npy
+*.bin
+
 # Test files
 test_*.py

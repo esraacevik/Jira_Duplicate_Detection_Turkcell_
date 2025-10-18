@@ -78,7 +78,9 @@ def get_user_data_store(user_id: str) -> dict:
                     'uploadedAt': metadata.get('createdAt'),
                     'loaded': df is not None,
                     'userId': user_id,
-                    'embeddingsReady': True
+                    'embeddingsCreated': True,  # If metadata exists, embeddings were created
+                    'embeddingsReady': True,
+                    'embeddingsPath': str(user_embeddings_dir)
                 }
                 logger.info(f"✅ Restored user data store from disk for user: {user_id}")
             except Exception as e:
@@ -1223,7 +1225,9 @@ def data_status():
                 'custom_data_columns': user_store['columns'],
                 'fileName': user_store['fileName'],
                 'rowCount': user_store['rowCount'],
-                'userId': user_id
+                'userId': user_id,
+                'embeddingsCreated': user_store.get('embeddingsCreated', user_store.get('embeddingsReady', False)),
+                'embeddingsPath': user_store.get('embeddingsPath', None)
             })
         else:
             # No data loaded for this user

@@ -11,6 +11,7 @@ from hybrid_search import HybridSearch
 import logging
 from typing import Dict, List, Optional
 import time
+import os
 from pathlib import Path
 from src.text_feature_extractor import TextFeatureExtractor
 

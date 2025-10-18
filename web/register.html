@@ -10,7 +10,7 @@
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <!-- Firestore not used - removed to fix CORS errors -->
     
     <style>
         /* Animated Background Section */
@@ -470,17 +470,8 @@
                     displayName: fullName
                 });
                 
-                // Save additional user info to Firestore
-                await db.collection('users').doc(user.uid).set({
-                    uid: user.uid,
-                    email: email,
-                    fullName: fullName,
-                    role: role,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    lastLogin: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                
-                console.log('✅ User data saved to Firestore');
+                // Note: User data stored in Firebase Auth only (Firestore not used)
+                console.log('✅ User registered successfully:', user.uid);
                 
                 // Show success
                 showSuccess('Kayıt başarılı! Giriş sayfasına yönlendiriliyorsunuz...');

@@ -10,7 +10,7 @@
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <!-- Firestore not used - removed to fix CORS errors -->
     
     <style>
         /* Animated Background Section */
@@ -380,22 +380,14 @@
                 
                 console.log('✅ Firebase login successful:', user.uid);
                 
-                // Get user data from Firestore
-                const userDoc = await db.collection('users').doc(user.uid).get();
-                const userData = userDoc.data();
-                
-                // Update last login
-                await db.collection('users').doc(user.uid).update({
-                    lastLogin: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                
+                // Note: User data from Firebase Auth only (Firestore not used)
                 // Create session
                 const session = {
                     uid: user.uid,
                     email: user.email,
                     username: user.email,
-                    name: userData?.fullName || user.displayName || user.email,
-                    role: userData?.role || 'user',
+                    name: user.displayName || user.email,
+                    role: 'user',
                     loginTime: new Date().toISOString(),
                     authProvider: 'firebase'
                 };

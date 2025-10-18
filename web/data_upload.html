@@ -514,7 +514,8 @@
                 updateEmbeddingProgress(10, '📤 Veri backend\'e gönderiliyor...');
                 
                 // Send data to backend
-                const response = await fetch('http://localhost:5001/api/upload_data', {
+                const API_BASE_URL = 'https://esracevik01-jira-duplicate-detection.hf.space/api';
+                const response = await fetch(`${API_BASE_URL}/upload_data`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'

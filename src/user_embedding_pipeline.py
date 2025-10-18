@@ -34,8 +34,10 @@ class UserEmbeddingPipeline:
         self.model = None
         self.use_firebase_cache = use_firebase_cache
         
-        # Kullanıcı için özel klasör
-        self.user_dir = Path(f"data/user_embeddings/{user_id}")
+        # Kullanıcı için özel klasör - use /tmp in production (Hugging Face Spaces)
+        import os
+        data_base_dir = os.getenv('DATA_DIR', '/tmp' if os.getenv('SPACE_ID') else 'data')
+        self.user_dir = Path(f"{data_base_dir}/user_embeddings/{user_id}")
         self.user_dir.mkdir(parents=True, exist_ok=True)
         
         # Firebase Storage Manager

@@ -12,6 +12,7 @@ import logging
 from typing import Dict, List, Optional
 import time
 from pathlib import Path
+from src.text_feature_extractor import TextFeatureExtractor
 
 # Configure logging
 logging.basicConfig(
@@ -30,6 +31,9 @@ search_system = None
 # Global variable to store custom uploaded data PER USER
 # Structure: user_data_stores[user_id] = { data, fileName, rowCount, ... }
 user_data_stores = {}
+
+# Initialize feature extractor
+feature_extractor = TextFeatureExtractor()
 
 def get_user_data_store(user_id: str) -> dict:
     """Get data store for a specific user - loads from disk if exists"""
@@ -1402,6 +1406,216 @@ def internal_error(error):
         'success': False,
         'error': 'Internal server error'
     }), 500
+
+
+# ============================================================================
+# FEATURE EXTRACTION ENDPOINTS
+# ============================================================================
+
+@app.route('/api/available_extraction_types', methods=['GET'])
+def get_available_extraction_types():
+    """Get list of available feature types for extraction"""
+    try:
+        feature_types = feature_extractor.get_available_features()
+        
+        # Add descriptions
+        descriptions = {
+            'application': 'Uygulama adı (BiP, Whatsapp, Instagram, vb.)',
+            'platform': 'Platform (iOS, Android, Windows, vb.)',
+            'version': 'Versiyon numarası (14.5, 2.3.1, vb.)',
+            'device': 'Cihaz modeli (iPhone 12, Samsung Galaxy S21, vb.)',
+            'severity': 'Önem derecesi (Critical, High, Medium, Low)',
+            'component': 'Bileşen/Modül (Login, Payment, Search, vb.)'
+        }
+        
+        return jsonify({
+            'success': True,
+            'featureTypes': [
+                {
+                    'type': ft,
+                    'description': descriptions.get(ft, ft)
+                }
+                for ft in feature_types
+            ]
+        })
+    
+    except Exception as e:
+        logger.error(f"Error getting extraction types: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/suggest_extractions', methods=['POST'])
+def suggest_extractions():
+    """
+    Analyze a text column and suggest which features can be extracted
+    
+    Request body:
+    {
+        "userId": "user123",
+        "sourceColumn": "description"
+    }
+    
+    Returns:
+    {
+        "success": true,
+        "suggestions": {
+            "application": 45,  // number of rows where this can be extracted
+            "platform": 38,
+            "version": 12
+        }
+    }
+    """
+    try:
+        data = request.get_json()
+        user_id = data.get('userId')
+        source_column = data.get('sourceColumn')
+        
+        if not user_id or not source_column:
+            return jsonify({
+                'success': False,
+                'error': 'userId and sourceColumn are required'
+            }), 400
+        
+        # Get user data
+        user_store = get_user_data_store(user_id)
+        if not user_store.get('loaded'):
+            return jsonify({
+                'success': False,
+                'error': 'No data loaded for this user'
+            }), 404
+        
+        df = user_store['data']
+        
+        if source_column not in df.columns:
+            return jsonify({
+                'success': False,
+                'error': f'Column "{source_column}" not found in data'
+            }), 400
+        
+        # Analyze and suggest
+        suggestions = feature_extractor.suggest_extractions(df, source_column)
+        
+        logger.info(f"Extraction suggestions for user {user_id}, column {source_column}: {suggestions}")
+        
+        return jsonify({
+            'success': True,
+            'suggestions': suggestions,
+            'totalRows': len(df)
+        })
+    
+    except Exception as e:
+        logger.error(f"Error suggesting extractions: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/extract_features', methods=['POST'])
+def extract_features_endpoint():
+    """
+    Extract features from a text column and add as new columns
+    
+    Request body:
+    {
+        "userId": "user123",
+        "sourceColumn": "description",
+        "extractions": {
+            "Application": "application",
+            "Platform": "platform",
+            "App_Version": "version"
+        }
+    }
+    
+    Returns:
+    {
+        "success": true,
+        "extractedColumns": ["Application", "Platform", "App_Version"],
+        "extractionStats": {
+            "Application": 45,  // number of non-null values
+            "Platform": 38,
+            "App_Version": 12
+        }
+    }
+    """
+    try:
+        data = request.get_json()
+        user_id = data.get('userId')
+        source_column = data.get('sourceColumn')
+        extractions = data.get('extractions', {})
+        
+        if not user_id or not source_column or not extractions:
+            return jsonify({
+                'success': False,
+                'error': 'userId, sourceColumn, and extractions are required'
+            }), 400
+        
+        # Get user data
+        user_store = get_user_data_store(user_id)
+        if not user_store.get('loaded'):
+            return jsonify({
+                'success': False,
+                'error': 'No data loaded for this user'
+            }), 404
+        
+        df = user_store['data']
+        
+        if source_column not in df.columns:
+            return jsonify({
+                'success': False,
+                'error': f'Column "{source_column}" not found in data'
+            }), 400
+        
+        # Extract features
+        logger.info(f"Extracting features for user {user_id}: {extractions}")
+        df_extracted = feature_extractor.add_extracted_columns(df, source_column, extractions)
+        
+        # Calculate stats
+        extraction_stats = {}
+        for col_name in extractions.keys():
+            if col_name in df_extracted.columns:
+                non_null_count = df_extracted[col_name].notna().sum()
+                extraction_stats[col_name] = int(non_null_count)
+        
+        # Update user store
+        user_store['data'] = df_extracted
+        user_store['columns'] = list(df_extracted.columns)
+        
+        # Save to disk
+        user_embeddings_dir = Path('data/user_embeddings') / user_id
+        user_embeddings_dir.mkdir(parents=True, exist_ok=True)
+        data_file = user_embeddings_dir / 'data.csv'
+        df_extracted.to_csv(data_file, index=False)
+        
+        # Update metadata
+        import json
+        metadata_file = user_embeddings_dir / 'metadata.json'
+        if metadata_file.exists():
+            with open(metadata_file, 'r') as f:
+                metadata = json.load(f)
+            metadata['extractedColumns'] = list(extractions.keys())
+            metadata['extractionSource'] = source_column
+            with open(metadata_file, 'w') as f:
+                json.dump(metadata, f, indent=2)
+        
+        logger.info(f"Feature extraction complete: {extraction_stats}")
+        
+        return jsonify({
+            'success': True,
+            'extractedColumns': list(extractions.keys()),
+            'extractionStats': extraction_stats,
+            'totalRows': len(df_extracted)
+        })
+    
+    except Exception as e:
+        logger.error(f"Error extracting features: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 
 def main():

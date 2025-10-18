@@ -104,3 +104,18 @@ tmp/
 package-lock.json
 yarn.lock
 node_modules/
+
+# Firebase
+firebase-service-account.json
+firebase-service-account-*.json
+.firebase/
+
+# User data and embeddings (will be on Railway volume or Firebase)
+data/user_embeddings/
+data/user_data/
+data/user_datasets/
+data/test_*.csv
+data/embedding_outputs/
+
+# Test files
+test_*.py

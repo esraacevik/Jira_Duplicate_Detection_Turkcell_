@@ -1,0 +1,50 @@
+# Railway Ignore File
+# Bu dosyalar Railway'e upload edilmeyecek
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment
+venv/
+env/
+
+# Local development
+.env
+.env.local
+*.log
+
+# Firebase credentials (Railway environment variables'dan gelecek)
+firebase-service-account*.json
+
+# IDE
+.vscode/
+.idea/
+
+# Git
+.git/
+.gitignore
+
+# Test files
+test_*.py
+tests/
+
+# Documentation (optional)
+*.md
+!README.md
+
+# Notebooks
+notebooks/
+*.ipynb
+
+# Large data files (bunlar user upload'la gelecek)
+data/data_*.csv
+data/*.xlsx
+data/duplike*.xlsx
+
+# Temporary
+tmp/
+temp/
+*.tmp
+

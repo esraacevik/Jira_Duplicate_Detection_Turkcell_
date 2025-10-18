@@ -543,12 +543,17 @@
             // If custom data is uploaded, send selected columns to backend
             if (dataSelection === 'new' && uploadedDataInfo) {
                 try {
+                    // Get current user's userId
+                    const session = JSON.parse(localStorage.getItem('userSession'));
+                    const userId = session?.uid || session?.username || 'anonymous';
+                    
                     const response = await fetch('http://localhost:5001/api/update_selected_columns', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({
+                            userId: userId,
                             selectedColumns: selectedColumns,
                             metadataColumns: selectedMetadataColumns
                         })

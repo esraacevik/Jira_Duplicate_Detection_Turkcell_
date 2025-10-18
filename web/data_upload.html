@@ -85,6 +85,64 @@
             font-weight: 700;
             font-size: 0.9rem;
         }
+        
+        /* Embedding Progress Modal */
+        .embedding-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+        }
+        .embedding-modal.show {
+            display: flex;
+        }
+        .embedding-modal-content {
+            background: linear-gradient(135deg, #FFFFFF 0%, #F3F4F6 100%);
+            border-radius: var(--radius-xl);
+            padding: var(--spacing-3xl);
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+        }
+        .embedding-spinner {
+            width: 80px;
+            height: 80px;
+            border: 8px solid #f3f3f3;
+            border-top: 8px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto var(--spacing-xl);
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .embedding-progress-bar {
+            width: 100%;
+            height: 40px;
+            background: #E5E7EB;
+            border-radius: 20px;
+            overflow: hidden;
+            margin: var(--spacing-xl) 0;
+        }
+        .embedding-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #FBBF24 0%, #F59E0B 50%, #D97706 100%);
+            transition: width 0.5s ease-out;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: 700;
+            font-size: 1rem;
+        }
     </style>
 </head>
 <body style="background: linear-gradient(135deg, #0A0E27 0%, #1a1f3a 100%); min-height: 100vh;">
@@ -172,6 +230,27 @@
         >
             <span>Sütun Eşleştirmesine Geç</span>
         </button>
+    </div>
+
+    <!-- Embedding Progress Modal -->
+    <div id="embeddingModal" class="embedding-modal">
+        <div class="embedding-modal-content">
+            <div class="embedding-spinner"></div>
+            <h2 style="color: var(--secondary-color); margin-bottom: var(--spacing-md);">
+                🤖 Embedding Oluşturuluyor
+            </h2>
+            <p id="embeddingStatus" style="color: #6B7280; margin-bottom: var(--spacing-lg); font-size: 1rem;">
+                Verileriniz işleniyor...
+            </p>
+            <div class="embedding-progress-bar">
+                <div id="embeddingProgressFill" class="embedding-progress-fill" style="width: 0%;">
+                    0%
+                </div>
+            </div>
+            <p style="color: #9CA3AF; font-size: 0.9rem; margin-top: var(--spacing-lg);">
+                ℹ️ Bu işlem birkaç dakika sürebilir. Lütfen sayfayı kapatmayın.
+            </p>
+        </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -371,17 +450,39 @@
             uploadedData = null;
         }
 
+        // Show embedding progress modal
+        function showEmbeddingModal() {
+            document.getElementById('embeddingModal').classList.add('show');
+        }
+        
+        // Hide embedding progress modal
+        function hideEmbeddingModal() {
+            document.getElementById('embeddingModal').classList.remove('show');
+        }
+        
+        // Update embedding progress
+        function updateEmbeddingProgress(percent, message) {
+            const fill = document.getElementById('embeddingProgressFill');
+            const statusText = document.getElementById('embeddingStatus');
+            
+            fill.style.width = percent + '%';
+            fill.textContent = percent + '%';
+            if (message) {
+                statusText.textContent = message;
+            }
+        }
+        
         // Continue to mapping
         async function continueToMapping() {
             if (!uploadedData) {
-                alert(' lütfen önce bir dosya yükleyin!');
+                alert('⚠️ Lütfen önce bir dosya yükleyin!');
                 return;
             }
             
             // Disable button
             const btn = document.getElementById('continueBtn');
             btn.disabled = true;
-            btn.innerHTML = '<span> Veri backend\'e gnderiliyor...</span>';
+            btn.innerHTML = '<span>⏳ Veri backend\'e gönderiliyor...</span>';
             
             try {
                 // Store uploaded data in localStorage
@@ -399,6 +500,19 @@
                 
                 localStorage.setItem('uploadedData', JSON.stringify(dataInfo));
                 
+                // Get user session for userId
+                const userSession = JSON.parse(localStorage.getItem('userSession') || '{}');
+                const userId = userSession.uid || userSession.username || 'anonymous';
+                
+                // Add userId to dataInfo
+                dataInfo.userId = userId;
+                
+                console.log('📤 Uploading data for user:', userId);
+                
+                // Show embedding progress modal
+                showEmbeddingModal();
+                updateEmbeddingProgress(10, '📤 Veri backend\'e gönderiliyor...');
+                
                 // Send data to backend
                 const response = await fetch('http://localhost:5001/api/upload_data', {
                     method: 'POST',
@@ -408,14 +522,35 @@
                     body: JSON.stringify(dataInfo)
                 });
                 
+                updateEmbeddingProgress(30, '🔄 Veri işleniyor...');
+                
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}`);
                 }
                 
+                updateEmbeddingProgress(50, '🤖 Embedding modeli yükleniyor...');
+                
                 const result = await response.json();
                 
+                updateEmbeddingProgress(70, '✨ Embeddings oluşturuluyor...');
+                
+                // Simulate embedding creation time for better UX
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                updateEmbeddingProgress(90, '💾 Veriler kaydediliyor...');
+                
                 if (result.success) {
-                    console.log('Data uploaded to backend:', result.info);
+                    console.log('✅ Data uploaded to backend:', result.info);
+                    
+                    // Show embedding creation status
+                    if (result.info && result.info.embeddingsCreated) {
+                        console.log('✅ Embeddings created successfully!');
+                        console.log('📁 Embeddings path:', result.info.embeddingsPath);
+                        updateEmbeddingProgress(100, '✅ Embedding başarıyla oluşturuldu!');
+                    } else {
+                        console.warn('⚠️ Embeddings creation failed or not completed');
+                        updateEmbeddingProgress(100, '⚠️ Embedding oluşturma tamamlanamadı');
+                    }
                     
                     // Save as selectedDataset for column_mapping.html to use
                     localStorage.setItem('selectedDataset', JSON.stringify({
@@ -425,6 +560,9 @@
                         loadedAt: new Date().toISOString()
                     }));
                     
+                    // Wait a bit before redirecting
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                    
                     // Redirect to column mapping
                     window.location.href = 'column_mapping.html';
                 } else {
@@ -433,7 +571,9 @@
                 
             } catch (error) {
                 console.error('Backend upload error:', error);
-                alert('Veri backend\'e gönderilemedi, ancak lokal olarak kaydedildi.\n\nHata: ' + error.message + '\n\nDevam edebilirsiniz.');
+                hideEmbeddingModal();
+                
+                alert('⚠️ Veri backend\'e gönderilemedi, ancak lokal olarak kaydedildi.\n\nHata: ' + error.message + '\n\nDevam edebilirsiniz.');
                 
                 // Save as selectedDataset even if backend fails
                 localStorage.setItem('selectedDataset', JSON.stringify({
@@ -445,6 +585,10 @@
                 
                 // Still allow to continue even if backend upload fails
                 window.location.href = 'column_mapping.html';
+            } finally {
+                // Re-enable button in case of error (but won't matter since we redirect)
+                btn.disabled = false;
+                btn.innerHTML = '<span>Sütun Eşleştirmesine Geç</span>';
             }
         }
 

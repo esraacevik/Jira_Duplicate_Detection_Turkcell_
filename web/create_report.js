@@ -92,14 +92,31 @@ async function handleFormSubmit(e) {
         // Check if we're replacing an old report
         if (reportToReplace) {
             console.log('✅ reportToReplace is truthy, adding replace params...');
+            
+            // IMPORTANT: Always use the CURRENT summary from reportToReplace
+            // This ensures we're replacing the most up-to-date version
+            const oldSummary = reportToReplace.summary || reportToReplace.Summary || '';
+            
+            console.log('🔍 Old report to replace:', oldSummary);
+            console.log('🆕 New summary:', formData.summary);
+            
             formData.replace_report = true;
-            formData.old_report_summary = reportToReplace.summary;
-            formData.old_report_id = reportToReplace.reportId;
+            formData.old_report_summary = oldSummary;
+            formData.old_report_id = reportToReplace.reportId || reportToReplace.report_id || '';
+            
             console.log('🔄 Replacing old report:', reportToReplace);
             console.log('📤 formData with replace:', formData);
         } else {
             console.log('❌ reportToReplace is falsy, NOT replacing');
         }
+        
+        // Add userId to formData
+        const session = JSON.parse(localStorage.getItem('userSession'));
+        const userId = session?.uid || session?.username || 'anonymous';
+        formData.userId = userId;
+        
+        console.log('📤 Sending formData to backend:', formData);
+        console.log('👤 User ID:', userId);
         
         // Send to API
         const response = await fetch(`${API_BASE_URL}/create_report`, {
@@ -125,6 +142,7 @@ async function handleFormSubmit(e) {
             if (successMessage) {
                 // Update message based on whether we replaced a report
                 if (reportToReplace) {
+                    console.log('✅ Report replacement successful, clearing reportToReplace');
                     const successContent = successMessage.querySelector('strong');
                     if (successContent) {
                         successContent.innerHTML = `
@@ -134,9 +152,31 @@ async function handleFormSubmit(e) {
                     }
                     const successPara = successMessage.querySelector('p');
                     if (successPara) {
+                        const embeddingMsg = data.embeddings_updated 
+                            ? '<span style="color: #10B981; font-size: 0.95rem; display: block; margin-top: 8px;">✅ <strong>Embedding güncellendi!</strong> Yeni rapor arama sonuçlarında görünüyor.</span>'
+                            : '<span style="color: #F59E0B; font-size: 0.95rem; display: block; margin-top: 8px;">⚠️ Embedding güncellenemedi. Lütfen veriyi yeniden yükleyin.</span>';
+                        
                         successPara.innerHTML = `
-                            Eski rapor silindi ve yeni rapor kaydedildi.<br>
-                            Rapor ID: <strong id="reportId">${data.report_id || 'N/A'}</strong>
+                            <strong style="font-size: 1.1rem;">Eski rapor silindi, yeni rapor kaydedildi!</strong><br>
+                            Rapor ID: <strong id="reportId">${data.report_id || 'N/A'}</strong><br>
+                            ${embeddingMsg}
+                        `;
+                    }
+                    
+                    // CRITICAL: Clear reportToReplace after successful replacement
+                    reportToReplace = null;
+                    console.log('🧹 reportToReplace cleared');
+                } else {
+                    // Regular save message
+                    const successPara = successMessage.querySelector('p');
+                    if (successPara) {
+                        const embeddingMsg = data.embeddings_updated 
+                            ? '<span style="color: #10B981; font-size: 0.95rem; display: block; margin-top: 8px;">✅ <strong>Embedding oluşturuldu!</strong> Rapor arama sonuçlarında görünüyor.</span>'
+                            : '<span style="color: #F59E0B; font-size: 0.95rem; display: block; margin-top: 8px;">⚠️ Embedding oluşturulamadı. Lütfen veriyi yeniden yükleyin.</span>';
+                        
+                        successPara.innerHTML = `
+                            Rapor ID: <strong id="reportId">${data.report_id || 'N/A'}</strong><br>
+                            ${embeddingMsg}
                         `;
                     }
                 }
@@ -144,10 +184,10 @@ async function handleFormSubmit(e) {
                 successMessage.classList.add('show');
                 successMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 
-                // Hide success message after 5 seconds
+                // Hide success message after 7 seconds (increased for embedding message)
                 setTimeout(() => {
                     successMessage.classList.remove('show');
-                }, 5000);
+                }, 7000);
             }
             
             // Clear replace report state
@@ -157,8 +197,20 @@ async function handleFormSubmit(e) {
                 replaceMessage.remove();
             }
             
+            // Cancel any pending search
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
+                searchTimeout = null;
+            }
+            
             // Reset form
             form.reset();
+            
+            // Hide similar reports section after reset
+            const similarReportsSection = document.getElementById('similarReportsSection');
+            if (similarReportsSection) {
+                similarReportsSection.style.display = 'none';
+            }
         } else {
             throw new Error(data.error || 'Kaydetme baarsz');
         }
@@ -190,8 +242,12 @@ async function searchSimilarReports() {
     const component = componentEl.value;
     const appVersion = appVersionEl ? appVersionEl.value.trim() : '';
     
+    // Get similar reports section
+    const similarReportsSection = document.getElementById('similarReportsSection');
+    
     // Need at least summary and component
     if (!summary || summary.length < 10 || !component) {
+        console.log('⏸️  Search skipped: insufficient data (summary length:', summary.length, ', component:', component, ')');
         if (similarReportsSection) {
             similarReportsSection.style.display = 'none';
         }
@@ -235,14 +291,19 @@ async function searchSimilarReports() {
         similarReportsSection.style.display = 'block';
         
         // Build search request
+        const session = JSON.parse(localStorage.getItem('userSession'));
+        const userId = session?.uid || session?.username || 'anonymous';
+        
         const searchRequest = {
             query: summary,
-            top_k: 5
+            top_k: 5,
+            user_id: userId  // Add user_id for user-specific search
         };
         
         if (application) searchRequest.application = application;
         if (platform) searchRequest.platform = platform;
         if (appVersion) searchRequest.version = appVersion;
+        
         
         // Call API
         const response = await fetch(`${API_BASE_URL}/search`, {
@@ -252,9 +313,11 @@ async function searchSimilarReports() {
         });
         
         if (!response.ok) {
+            console.warn('Search response not OK:', response.status, response.statusText);
             throw new Error(`HTTP ${response.status}`);
         }
         
+        // Parse JSON response
         const data = await response.json();
         
         // Display results
@@ -268,11 +331,13 @@ async function searchSimilarReports() {
         }
         
     } catch (error) {
-        console.error('Similar reports search error:', error);
+        // Silently handle search errors - they're not critical
+        console.warn('⚠️  Similar reports search failed (non-critical):', error.message);
         const similarReportsSection = document.getElementById('similarReportsSection');
         if (similarReportsSection) {
             similarReportsSection.style.display = 'none';
         }
+        // Don't throw or alert - search is optional
     }
 }
 
@@ -297,7 +362,31 @@ function displaySimilarReports(results) {
     // Copy result card HTML from app.js style
     similarReportsList.innerHTML = results.map((result, index) => {
         const matchQuality = getMatchQuality(result.final_score);
-        const versionDisplay = result.app_version || 'N/A';
+        
+        // Build metadata tags - show ALL properties except internal ones
+        const excludedKeys = ['final_score', 'cross_encoder_score', 'version_similarity', 
+                             'platform_similarity', 'language_similarity', 'index', 
+                             'summary', 'Summary', 'description', 'Description', 'desc', 
+                             'platform_match', 'report_id'];
+        
+        let metaTagsHTML = '';
+        for (const [key, value] of Object.entries(result)) {
+            if (!excludedKeys.includes(key) && value !== null && value !== undefined && value !== '' && value !== 'N/A') {
+                const displayKey = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                metaTagsHTML += `<span class="meta-tag" title="${displayKey}"><strong>${displayKey}:</strong> ${escapeHtml(String(value))}</span>`;
+            }
+        }
+        
+        // Prepare description with "Read More" functionality
+        // Handle case-insensitive field names (Description vs description)
+        const descValue = result.description || result.Description || result.desc || '';
+        const summaryValue = result.summary || result.Summary || '';
+        
+        const fullDescription = escapeHtml(descValue);
+        const shortDescription = descValue.length > 200 
+            ? escapeHtml(descValue.substring(0, 200)) + '...' 
+            : fullDescription;
+        const needsReadMore = descValue.length > 200;
         
         return `
             <div class="result-card">
@@ -307,14 +396,32 @@ function displaySimilarReports(results) {
                     <span class="result-score">Score: ${result.final_score.toFixed(4)}</span>
                 </div>
                 
-                <h3 class="result-title">${escapeHtml(result.summary)}</h3>
-                <p class="result-description">${escapeHtml(result.description.substring(0, 150))}...</p>
+                <h3 class="result-title">${escapeHtml(summaryValue)}</h3>
+                
+                <div class="result-description-container">
+                    <div class="result-description" data-full="${needsReadMore ? 'false' : 'true'}" data-card-index="${index}">
+                        <span class="description-text">${shortDescription}</span>
+                        <span class="description-full" style="display: none;">${fullDescription}</span>
+                    </div>
+                    ${needsReadMore ? `
+                        <button class="read-more-btn" data-card-index="${index}" style="
+                            background: none;
+                            border: none;
+                            color: var(--primary-color);
+                            font-weight: 600;
+                            cursor: pointer;
+                            padding: 4px 0;
+                            margin-top: 4px;
+                            font-size: 0.9rem;
+                            text-decoration: underline;
+                        ">
+                            📖 Devamını Oku
+                        </button>
+                    ` : ''}
+                </div>
                 
                 <div class="result-meta">
-                    <span class="meta-tag" title="Application"> ${result.application || 'Unknown'}</span>
-                    <span class="meta-tag" title="Platform"> ${result.platform || 'unknown'}</span>
-                    <span class="meta-tag" title="Version"> ${versionDisplay}</span>
-                    <span class="meta-tag" title="Priority"> ${result.priority || 'none'}</span>
+                    ${metaTagsHTML}
                 </div>
                 
                 <div class="result-scores">
@@ -328,7 +435,7 @@ function displaySimilarReports(results) {
                     </div>
                     <div class="score-item">
                         <span class="score-label">Platform:</span>
-                        <span class="score-value">${result.platform_match ? '' : ''}</span>
+                        <span class="score-value">${result.platform_match ? '✓' : '✗'}</span>
                     </div>
                 </div>
                 
@@ -336,7 +443,7 @@ function displaySimilarReports(results) {
                     <button 
                         class="replace-report-btn btn btn-secondary" 
                         data-index="${index}"
-                        data-summary="${result.summary}"
+                        data-summary="${escapeHtml(summaryValue)}"
                         data-report-id="${result.report_id || index}"
                         style="flex: 1; padding: 8px 16px; font-size: 0.85rem; background: linear-gradient(135deg, #FF9500 0%, #FF6B00 100%); color: white; border: none;"
                         title="Bu rapor duplicate ise, yeni raporu bu eskisinin yerine kaydet"
@@ -352,7 +459,7 @@ function displaySimilarReports(results) {
         `;
     }).join('');
     
-    // Attach event listeners to replace buttons
+    // Attach event listeners to replace buttons and read more buttons
     setTimeout(() => {
         const replaceButtons = document.querySelectorAll('.replace-report-btn');
         replaceButtons.forEach(button => {
@@ -362,6 +469,33 @@ function displaySimilarReports(results) {
                 const summary = this.getAttribute('data-summary');
                 const reportId = this.getAttribute('data-report-id');
                 replaceReport(index, summary, reportId);
+            });
+        });
+        
+        // Attach read more button listeners
+        const readMoreButtons = document.querySelectorAll('.read-more-btn');
+        readMoreButtons.forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                const cardIndex = this.getAttribute('data-card-index');
+                const container = document.querySelector(`.result-description[data-card-index="${cardIndex}"]`);
+                const shortText = container.querySelector('.description-text');
+                const fullText = container.querySelector('.description-full');
+                const isFull = container.getAttribute('data-full') === 'true';
+                
+                if (isFull) {
+                    // Show short version
+                    shortText.style.display = 'inline';
+                    fullText.style.display = 'none';
+                    this.innerHTML = '📖 Devamını Oku';
+                    container.setAttribute('data-full', 'false');
+                } else {
+                    // Show full version
+                    shortText.style.display = 'none';
+                    fullText.style.display = 'inline';
+                    this.innerHTML = '📕 Daha Az Göster';
+                    container.setAttribute('data-full', 'true');
+                }
             });
         });
     }, 100);
@@ -859,7 +993,11 @@ async function loadCategoricalFieldOptions() {
         if (!columnName) continue;
         
         try {
-            const response = await fetch(`${API_BASE_URL}/column_values/${encodeURIComponent(columnName)}`);
+            // Get current user's userId
+            const session = JSON.parse(localStorage.getItem('userSession'));
+            const userId = session?.uid || session?.username || 'anonymous';
+            
+            const response = await fetch(`${API_BASE_URL}/column_values/${encodeURIComponent(columnName)}?user_id=${encodeURIComponent(userId)}`);
             const data = await response.json();
             
             if (data.success && data.values) {

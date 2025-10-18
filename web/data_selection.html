@@ -6,6 +6,12 @@
     <title>Data Selection - Bug Report System</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    
     <style>
         .selection-container {
             max-width: 900px;
@@ -227,12 +233,17 @@
     <div class="selection-container" style="position: relative; z-index: 1;">
         <!-- Welcome Banner -->
         <div class="welcome-banner">
-            <div>
-                <h1 style="margin: 0 0 var(--spacing-xs) 0;">Hoş Geldiniz, <span id="userName"></span>!</h1>
-                <p style="margin: 0; opacity: 0.9;">Duplicate detection sistemini kullanmaya başlayalım</p>
+            <div style="display: flex; align-items: center; gap: 20px;">
+                <img src="https://ffo3gv1cf3ir.merlincdn.net/SiteAssets/Bireysel/Navigasyon/turkcell-logo.png?20251016_03" 
+                     alt="Turkcell Logo" 
+                     style="height: 50px; filter: brightness(0);">
+                <div>
+                    <h1 style="margin: 0 0 var(--spacing-xs) 0;">Hoş Geldiniz, <span id="userName"></span>!</h1>
+                    <p style="margin: 0; opacity: 0.9;">Duplicate detection sistemini kullanmaya başlayalım</p>
+                </div>
             </div>
             <button onclick="logout()" class="btn btn-secondary" style="background: rgba(0,0,0,0.2); color: white; border: none;">
-                Çıkış
+                🚪 Çıkış
             </button>
         </div>
 
@@ -244,14 +255,12 @@
         <div class="data-option" onclick="selectOption('existing')" id="optionExisting">
             <div class="electric-spark"></div>
             <div class="option-title">Mevcut Veri Setini Kullan</div>
-            <div class="option-description">
-                Sistemde yüklü olan <strong>data_with_application.csv</strong> dosyasını kullan
+            <div class="option-description" id="existingDataDesc">
+                Henüz veri yüklenmedi. Önce veri yüklemeniz gerekiyor.
             </div>
-            <ul class="option-features">
-                <li>14,268 adet bug raporu</li>
-                <li>Embeddings ve FAISS index hazır</li>
-                <li>Hızlı başlangıç (anında kullanıma hazır)</li>
-                <li>BiP, TV+, Fizy ve diğer Turkcell uygulamaları</li>
+            <ul class="option-features" id="existingDataFeatures">
+                <li>Veri yüklendiğinde burada görünecek</li>
+                <li>⬇️ Aşağıdan "Yeni Veri Seti Yükle" seçeneğini kullanın</li>
             </ul>
         </div>
 
@@ -283,45 +292,142 @@
         </button>
     </div>
 
+    <!-- Firebase Config -->
+    <script src="firebase-config.js"></script>
+
     <script>
         let selectedOption = null;
         const API_BASE_URL = 'http://localhost:5001/api';
+        let isAuthChecked = false;
 
-        // Check if user is logged in
-        const session = JSON.parse(localStorage.getItem('userSession'));
-        if (!session) {
-            window.location.href = 'login.html';
+        // Check authentication - WAIT for Firebase auth state
+        function checkAuth() {
+            return new Promise((resolve, reject) => {
+                // First check localStorage
+                const session = JSON.parse(localStorage.getItem('userSession'));
+                
+                // If Firebase is configured, also check Firebase auth
+                if (typeof firebase !== 'undefined' && firebase.auth) {
+                    auth.onAuthStateChanged((user) => {
+                        if (isAuthChecked) return; // Prevent multiple checks
+                        isAuthChecked = true;
+                        
+                        if (user) {
+                            // User is signed in with Firebase
+                            console.log('✅ Firebase auth verified:', user.email);
+                            
+                            // Make sure localStorage session exists
+                            if (!session) {
+                                const newSession = {
+                                    uid: user.uid,
+                                    email: user.email,
+                                    username: user.email,
+                                    name: user.displayName || user.email,
+                                    role: 'user',
+                                    loginTime: new Date().toISOString(),
+                                    authProvider: 'firebase'
+                                };
+                                localStorage.setItem('userSession', JSON.stringify(newSession));
+                                resolve(newSession);
+                            } else {
+                                resolve(session);
+                            }
+                        } else if (session) {
+                            // No Firebase auth but has localStorage session (demo mode)
+                            console.log('✅ Demo mode session found');
+                            resolve(session);
+                        } else {
+                            // No auth at all
+                            console.log('❌ No authentication found');
+                            reject('Not authenticated');
+                        }
+                    });
+                } else {
+                    // Firebase not configured, use localStorage only
+                    if (session) {
+                        console.log('✅ Demo mode session found');
+                        isAuthChecked = true;
+                        resolve(session);
+                    } else {
+                        console.log('❌ No session found');
+                        isAuthChecked = true;
+                        reject('Not authenticated');
+                    }
+                }
+            });
         }
 
-        // Display user name
-        document.getElementById('userName').textContent = session.name;
-
-        // Check for existing uploaded data on page load
-        checkForUploadedData();
+        // Initialize page - wait for auth check
+        checkAuth()
+            .then((session) => {
+                console.log('✅ Authentication verified, loading page...');
+                // Display user name
+                document.getElementById('userName').textContent = session.name || session.username;
+                // Check for uploaded data
+                checkForUploadedData();
+            })
+            .catch((error) => {
+                console.log('❌ Authentication failed, redirecting to login...');
+                window.location.href = 'login.html';
+            });
 
         async function checkForUploadedData() {
             try {
-                const response = await fetch(`${API_BASE_URL}/data_status`);
+                // Get current user's userId
+                const session = JSON.parse(localStorage.getItem('userSession'));
+                const userId = session?.uid || session?.username || 'anonymous';
+                
+                const response = await fetch(`${API_BASE_URL}/data_status?user_id=${encodeURIComponent(userId)}`);
                 const data = await response.json();
 
-                if (data.customDataLoaded) {
-                    // Update the existing data option to show the uploaded data
-                    const optionExisting = document.getElementById('optionExisting');
-                    const optionTitle = optionExisting.querySelector('.option-title');
-                    const optionDesc = optionExisting.querySelector('.option-description');
-                    const optionFeatures = optionExisting.querySelector('.option-features');
+                const optionExisting = document.getElementById('optionExisting');
+                const optionTitle = optionExisting.querySelector('.option-title');
+                const optionDesc = document.getElementById('existingDataDesc');
+                const optionFeatures = document.getElementById('existingDataFeatures');
 
+                if (data.customDataLoaded) {
+                    // Enable the existing data option
+                    optionExisting.style.opacity = '1';
+                    optionExisting.style.cursor = 'pointer';
+                    optionExisting.onclick = () => selectOption('existing');
+                    
+                    // Update with user's data
                     optionTitle.innerHTML = 'Mevcut Veri Setini Kullan <span style="background: #10B981; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; margin-left: 8px;">YÜKLÜ</span>';
                     optionDesc.innerHTML = `Sistemde yüklü olan <strong>${data.fileName}</strong> dosyasını kullan`;
                     optionFeatures.innerHTML = `
-                        <li>${data.rowCount.toLocaleString('tr-TR')} adet bug raporu</li>
-                        <li>Yüklenme tarihi: ${new Date(data.uploadedAt).toLocaleString('tr-TR')}</li>
-                        <li>${data.columnCount} adet sütun</li>
-                        <li>Hızlı başlangıç (anında kullanıma hazır)</li>
+                        <li>✅ ${data.rowCount.toLocaleString('tr-TR')} adet rapor</li>
+                        <li>📅 Yüklenme: ${new Date(data.uploadedAt).toLocaleString('tr-TR')}</li>
+                        <li>📊 ${data.columnCount} adet sütun</li>
+                        <li>⚡ Hızlı başlangıç (anında kullanıma hazır)</li>
+                    `;
+                } else {
+                    // Disable the existing data option
+                    optionExisting.style.opacity = '0.5';
+                    optionExisting.style.cursor = 'not-allowed';
+                    optionExisting.onclick = (e) => {
+                        e.stopPropagation();
+                        alert('⚠️ Henüz veri yüklenmedi. Lütfen önce "Yeni Veri Seti Yükle" seçeneğini kullanın.');
+                    };
+                    
+                    // Show "no data" message
+                    optionTitle.innerHTML = 'Mevcut Veri Setini Kullan <span style="background: #EF4444; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; margin-left: 8px;">VERİ YOK</span>';
+                    optionDesc.innerHTML = '❌ Henüz veri yüklenmedi. Önce veri yüklemeniz gerekiyor.';
+                    optionFeatures.innerHTML = `
+                        <li>Veri yüklendiğinde burada görünecek</li>
+                        <li>⬇️ Aşağıdan "Yeni Veri Seti Yükle" seçeneğini kullanın</li>
                     `;
                 }
             } catch (error) {
-                console.log('No custom data loaded, showing default info');
+                console.error('Error checking data status:', error);
+                
+                // Disable on error
+                const optionExisting = document.getElementById('optionExisting');
+                optionExisting.style.opacity = '0.5';
+                optionExisting.style.cursor = 'not-allowed';
+                optionExisting.onclick = (e) => {
+                    e.stopPropagation();
+                    alert('⚠️ Henüz veri yüklenmedi. Lütfen önce "Yeni Veri Seti Yükle" seçeneğini kullanın.');
+                };
             }
         }
 
@@ -362,10 +468,26 @@
         }
 
         // Logout
-        function logout() {
-            localStorage.removeItem('userSession');
-            localStorage.removeItem('dataSelection');
-            window.location.href = 'login.html';
+        async function logout() {
+            if (confirm('Çıkış yapmak istediğinizden emin misiniz?')) {
+                try {
+                    // Sign out from Firebase if available
+                    if (typeof firebase !== 'undefined' && firebase.auth) {
+                        await auth.signOut();
+                        console.log('✅ Firebase signout successful');
+                    }
+                } catch (error) {
+                    console.error('Firebase signout error:', error);
+                }
+                
+                // Clear local storage
+                localStorage.removeItem('userSession');
+                localStorage.removeItem('dataSelection');
+                localStorage.removeItem('systemConfig');
+                
+                // Redirect to login
+                window.location.href = 'login.html';
+            }
         }
 
         // Create animated stars

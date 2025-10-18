@@ -65,6 +65,10 @@ async function performSearch(showLoading = true) {
     const systemConfig = JSON.parse(localStorage.getItem('systemConfig') || '{}');
     const selectedColumns = systemConfig.selectedColumns || ['Summary', 'Description'];
     
+    // Get userId from session
+    const session = JSON.parse(localStorage.getItem('userSession'));
+    const userId = session?.uid || session?.username || 'anonymous';
+    
     // Prepare request data
     const requestData = {
         query: summary,
@@ -72,8 +76,11 @@ async function performSearch(showLoading = true) {
         platform: elements.platformSelect.value || null,
         version: elements.versionInput.value || null,
         top_k: 10,
-        selected_columns: selectedColumns  // Send selected columns to backend
+        selected_columns: selectedColumns,  // Send selected columns to backend
+        user_id: userId  // Add user_id for user-specific search
     };
+    
+    console.log('🔍 Searching with user_id:', userId);
     
     try {
         const startTime = performance.now();
@@ -161,6 +168,30 @@ function createResultCard(result, rank) {
     // Determine match quality
     const { quality, emoji } = getMatchQuality(result.final_score);
     
+    // Build metadata tags - show ALL properties except internal ones
+    const excludedKeys = ['final_score', 'cross_encoder_score', 'version_similarity', 
+                         'platform_similarity', 'language_similarity', 'index', 
+                         'summary', 'Summary', 'description', 'Description', 'desc'];
+    
+    let metaTagsHTML = '';
+    for (const [key, value] of Object.entries(result)) {
+        if (!excludedKeys.includes(key) && value !== null && value !== undefined && value !== '' && value !== 'N/A') {
+            const displayKey = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            metaTagsHTML += `<span class="meta-tag" title="${displayKey}"><strong>${displayKey}:</strong> ${escapeHtml(String(value))}</span>`;
+        }
+    }
+    
+    // Prepare description with "Read More" functionality
+    // Handle case-insensitive field names (Description vs description)
+    const descValue = result.description || result.Description || result.desc || '';
+    const summaryValue = result.summary || result.Summary || '';
+    
+    const fullDescription = escapeHtml(descValue);
+    const shortDescription = descValue.length > 200 
+        ? escapeHtml(descValue.substring(0, 200)) + '...' 
+        : fullDescription;
+    const needsReadMore = descValue.length > 200;
+    
     // Build HTML
     card.innerHTML = `
         <div class="result-header">
@@ -173,15 +204,32 @@ function createResultCard(result, rank) {
             <span class="score-badge">Score: ${result.final_score.toFixed(4)}</span>
         </div>
         
-        <div class="result-summary">${escapeHtml(result.summary)}</div>
+        <div class="result-summary">${escapeHtml(summaryValue)}</div>
         
-        <div class="result-description">${escapeHtml(result.description)}</div>
+        <div class="result-description-container">
+            <div class="result-description" data-full="${needsReadMore ? 'false' : 'true'}">
+                <span class="description-text">${shortDescription}</span>
+                <span class="description-full" style="display: none;">${fullDescription}</span>
+            </div>
+            ${needsReadMore ? `
+                <button class="read-more-btn" onclick="toggleDescription(this)" style="
+                    background: none;
+                    border: none;
+                    color: var(--primary-color);
+                    font-weight: 600;
+                    cursor: pointer;
+                    padding: 4px 0;
+                    margin-top: 4px;
+                    font-size: 0.9rem;
+                    text-decoration: underline;
+                ">
+                     Devamını Oku
+                </button>
+            ` : ''}
+        </div>
         
         <div class="result-meta">
-            ${result.application ? `<span class="meta-tag"> <strong>${result.application}</strong></span>` : ''}
-            ${result.platform ? `<span class="meta-tag"> <strong>${result.platform}</strong></span>` : ''}
-            ${result.app_version && result.app_version !== 'N/A' ? `<span class="meta-tag"> <strong>${result.app_version}</strong></span>` : ''}
-            ${result.priority ? `<span class="meta-tag"> ${result.priority}</span>` : ''}
+            ${metaTagsHTML}
         </div>
         
         <div class="result-scores">
@@ -215,6 +263,28 @@ function createResultCard(result, rank) {
     `;
     
     return card;
+}
+
+// Toggle description visibility
+function toggleDescription(button) {
+    const container = button.previousElementSibling;
+    const shortText = container.querySelector('.description-text');
+    const fullText = container.querySelector('.description-full');
+    const isFull = container.getAttribute('data-full') === 'true';
+    
+    if (isFull) {
+        // Show short version
+        shortText.style.display = 'inline';
+        fullText.style.display = 'none';
+        button.innerHTML = ' Devamını Oku';
+        container.setAttribute('data-full', 'false');
+    } else {
+        // Show full version
+        shortText.style.display = 'none';
+        fullText.style.display = 'inline';
+        button.innerHTML = ' Daha Az Göster';
+        container.setAttribute('data-full', 'true');
+    }
 }
 
 // =============================================
@@ -266,9 +336,9 @@ function displayMockResults() {
             description: 'Kullanc mesaj gndermeye altnda uygulama aniden kapanyor. Bu durum zellikle uzun mesajlarda grlyor...',
             application: 'BiP',
             platform: 'android',
-            app_version: '3.70.19',
-            language: null,
             priority: 'high',
+            component: 'Android Client',
+            severity: 'Critical',
             cross_encoder_score: 5.2145,
             version_similarity: 1.0,
             platform_similarity: 1.0,
@@ -281,9 +351,9 @@ function displayMockResults() {
             description: 'Mesaj gnderme ilemi srasnda uygulama donuyor ve kapanyor...',
             application: 'BiP',
             platform: 'android',
-            app_version: '3.70.18',
-            language: null,
             priority: 'medium',
+            component: 'Android Client',
+            severity: 'High',
             cross_encoder_score: 4.8521,
             version_similarity: 0.9,
             platform_similarity: 1.0,
@@ -296,9 +366,9 @@ function displayMockResults() {
             description: 'BiP uygulamasnda mesaj yazp gnder butonuna bastmda uygulama kapanyor...',
             application: 'BiP',
             platform: 'android',
-            app_version: '3.69.12',
-            language: null,
             priority: 'high',
+            component: 'Android Client',
+            severity: 'Critical',
             cross_encoder_score: 4.5123,
             version_similarity: 0.7,
             platform_similarity: 1.0,
@@ -532,8 +602,12 @@ async function loadCategoricalOptions(allColumns) {
             if (!selectEl) continue;
             
             try {
+                // Get current user's userId
+                const session = JSON.parse(localStorage.getItem('userSession'));
+                const userId = session?.uid || session?.username || 'anonymous';
+                
                 // Fetch unique values from backend
-                const response = await fetch(`${API_BASE_URL}/column_values/${encodeURIComponent(columnName)}`);
+                const response = await fetch(`${API_BASE_URL}/column_values/${encodeURIComponent(columnName)}?user_id=${encodeURIComponent(userId)}`);
                 const data = await response.json();
                 
                 if (data.success && data.values) {

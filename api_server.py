@@ -11,6 +11,7 @@ from hybrid_search import HybridSearch
 import logging
 from typing import Dict, List, Optional
 import time
+from pathlib import Path
 
 # Configure logging
 logging.basicConfig(
@@ -26,17 +27,86 @@ CORS(app)  # Enable CORS for frontend requests
 # Initialize search system (singleton)
 search_system = None
 
-# Global variable to store custom uploaded data
-custom_data_store = {
+# Global variable to store custom uploaded data PER USER
+# Structure: user_data_stores[user_id] = { data, fileName, rowCount, ... }
+user_data_stores = {}
+
+def get_user_data_store(user_id: str) -> dict:
+    """Get data store for a specific user - loads from disk if exists"""
+    if user_id not in user_data_stores:
+        # Check if user has data on disk
+        user_embeddings_dir = Path('data/user_embeddings') / user_id
+        metadata_file = user_embeddings_dir / 'metadata.json'
+        
+        if metadata_file.exists():
+            # Load from disk
+            try:
+                import json
+                import pandas as pd
+                
+                with open(metadata_file, 'r') as f:
+                    metadata = json.load(f)
+                
+                # Load the original data if available
+                data_file = user_embeddings_dir / 'data.csv'
+                df = None
+                if data_file.exists():
+                    df = pd.read_csv(data_file)
+                    logger.info(f"📂 Loaded user data from disk for user: {user_id} ({len(df)} rows)")
+                
+                # Reconstruct user_data_store from metadata
+                user_data_stores[user_id] = {
+                    'data': df,
+                    'fileName': metadata.get('fileName', 'uploaded_data.csv'),
+                    'rowCount': metadata.get('recordCount', len(df) if df is not None else 0),
+                    'columns': metadata.get('textColumns', []),
+                    'selectedColumns': metadata.get('textColumns', []),
+                    'metadataColumns': metadata.get('metadataColumns', []),
+                    'uploadedAt': metadata.get('createdAt'),
+                    'loaded': df is not None,
+                    'userId': user_id,
+                    'embeddingsReady': True
+                }
+                logger.info(f"✅ Restored user data store from disk for user: {user_id}")
+            except Exception as e:
+                logger.error(f"❌ Error loading user data from disk: {e}")
+                # Fall through to create empty store
+                user_data_stores[user_id] = {
     'data': None,
     'fileName': None,
     'rowCount': 0,
     'columns': [],
-    'selectedColumns': [],  # Columns to use for cross-encoder search
-    'metadataColumns': [],  # Columns to show in form for comparison
+                    'selectedColumns': [],
+                    'metadataColumns': [],
     'uploadedAt': None,
-    'loaded': False
-}
+                    'loaded': False,
+                    'userId': user_id
+                }
+        else:
+            # Create empty store
+            user_data_stores[user_id] = {
+                'data': None,
+                'fileName': None,
+                'rowCount': 0,
+                'columns': [],
+                'selectedColumns': [],
+                'metadataColumns': [],
+                'uploadedAt': None,
+                'loaded': False,
+                'userId': user_id
+            }
+    return user_data_stores[user_id]
+
+def set_user_data_store(user_id: str, data_store: dict):
+    """Set data store for a specific user"""
+    data_store['userId'] = user_id
+    user_data_stores[user_id] = data_store
+
+def clear_user_data_store(user_id: str):
+    """Clear data store for a specific user"""
+    if user_id in user_data_stores:
+        del user_data_stores[user_id]
+    logger.info(f"✅ Custom data cleared for user: {user_id}")
 
 def get_search_system():
     """Get or initialize the search system"""
@@ -48,19 +118,136 @@ def get_search_system():
     return search_system
 
 
-def search_custom_data(query, df, top_k=10, selected_columns=None):
+def update_embeddings_for_new_report(new_row_index):
     """
-    Simple text-based search on custom data
-    Returns results in the same format as hybrid search
+    Update embeddings and FAISS indices for a newly added report
+    
+    Args:
+        new_row_index: Index of the new row in the DataFrame (0-based)
+    """
+    global search_system
+    
+    if search_system is None:
+        logger.warning("⚠️ Search system not initialized, cannot update embeddings")
+        return
+    
+    try:
+        import numpy as np
+        import faiss
+        from pathlib import Path
+        
+        # Reload DataFrame to get the new report
+        logger.info(f"📥 Reloading data to include new report...")
+        search_system.load_data()
+        
+        # Get the new row
+        if new_row_index >= len(search_system.df):
+            logger.error(f"❌ Invalid row index: {new_row_index}, DataFrame has {len(search_system.df)} rows")
+            return
+        
+        new_row = search_system.df.iloc[new_row_index]
+        
+        # Generate embedding for the new report
+        logger.info(f"🔄 Generating embedding for new report: '{new_row.get('Summary', '')[:50]}...'")
+        summary = str(new_row.get('Summary', ''))
+        description = str(new_row.get('Description', ''))
+        combined_text = f"{summary}. {description}".strip().lower()
+        
+        new_embedding = search_system.bi_encoder.encode(
+            [combined_text],
+            batch_size=1,
+            show_progress_bar=False,
+            convert_to_numpy=True
+        )
+        
+        # Load existing embeddings
+        embeddings_path = Path(search_system.embeddings_dir) / "embeddings.npy"
+        if embeddings_path.exists():
+            existing_embeddings = np.load(embeddings_path)
+            logger.info(f"📊 Loaded existing embeddings: {existing_embeddings.shape}")
+            
+            # Append new embedding
+            updated_embeddings = np.vstack([existing_embeddings, new_embedding])
+            logger.info(f"✅ New embeddings shape: {updated_embeddings.shape}")
+            
+            # Save updated embeddings
+            np.save(embeddings_path, updated_embeddings)
+            logger.info(f"💾 Saved updated embeddings to {embeddings_path}")
+            
+            # Update in-memory embeddings
+            search_system.embeddings = updated_embeddings
+            
+            # Add to FAISS index
+            platform = str(new_row.get('Platform', 'unknown')).lower()
+            if platform not in ['android', 'ios', 'unknown']:
+                platform = 'unknown'
+            
+            logger.info(f"🔄 Adding to FAISS index: {platform}")
+            
+            if platform in search_system.faiss_indices:
+                # Normalize the embedding (FAISS uses cosine similarity with normalized vectors)
+                normalized_embedding = new_embedding / np.linalg.norm(new_embedding)
+                
+                # Add to FAISS index
+                search_system.faiss_indices[platform].add(normalized_embedding.astype('float32'))
+                
+                # Save updated FAISS index
+                index_path = Path(search_system.embeddings_dir) / f"faiss_index_{platform}.index"
+                faiss.write_index(search_system.faiss_indices[platform], str(index_path))
+                logger.info(f"💾 Saved updated FAISS index to {index_path}")
+                
+                logger.info(f"✅ Successfully added new report to FAISS index ({platform})")
+            else:
+                logger.warning(f"⚠️ FAISS index not found for platform: {platform}")
+        else:
+            logger.warning(f"⚠️ Embeddings file not found: {embeddings_path}")
+            logger.warning("⚠️ Please run embedding pipeline to generate embeddings")
+            
+    except Exception as e:
+        logger.error(f"❌ Error updating embeddings: {e}")
+        import traceback
+        traceback.print_exc()
+        raise
+
+
+def search_custom_data(query, df, top_k=10, selected_columns=None, user_id=None):
+    """
+    Hybrid search on custom data using user's embeddings
+    Falls back to text-based search if embeddings not available
     
     Args:
         query: Search query
         df: Custom DataFrame
         top_k: Number of results to return
         selected_columns: List of columns selected by user for search (priority)
+        user_id: User ID (for loading embeddings)
     """
     import pandas as pd
     from difflib import SequenceMatcher
+    import sys
+    import os
+    
+    # Try hybrid search with embeddings first
+    if user_id:
+        try:
+            # Add src to path
+            sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+            from user_hybrid_search import search_user_data
+            
+            logger.info(f"🚀 Using Hybrid Search with embeddings for user: {user_id}")
+            results = search_user_data(user_id, query, df, top_k)
+            
+            if results and len(results) > 0:
+                logger.info(f"✅ Hybrid search returned {len(results)} results")
+                return results
+            else:
+                logger.warning(f"⚠️ Hybrid search returned no results, falling back to text search")
+        
+        except Exception as e:
+            logger.warning(f"⚠️ Hybrid search failed: {e}, falling back to text search")
+    
+    # Fallback: Simple text-based search
+    logger.info(f"🔍 Using fallback text-based search")
     
     results = []
     query_lower = query.lower()
@@ -209,43 +396,56 @@ def search_reports():
         if not isinstance(top_k, int) or top_k < 1 or top_k > 50:
             top_k = 10
         
-        logger.info(f"🔍 Search request: query='{query[:50]}...', app={application}, platform={platform}, columns={selected_columns}")
+        # Get user_id from request (required for user-specific search)
+        user_id = data.get('user_id', 'anonymous')
         
-        # Check if custom data is loaded
-        global custom_data_store
+        logger.info(f"🔍 Search request: query='{query[:50]}...', app={application}, platform={platform}, user_id={user_id}")
         
-        if custom_data_store['loaded'] and custom_data_store['data'] is not None:
-            # Use custom data for search (simple text matching for now)
-            # Prefer selectedColumns from request, fallback to stored config
-            cols_to_use = selected_columns if selected_columns != ['Summary', 'Description'] else custom_data_store.get('selectedColumns', selected_columns)
-            logger.info(f"📤 Using custom uploaded data: {custom_data_store['fileName']}")
+        # Get user-specific data store
+        user_store = get_user_data_store(user_id)
+        
+        if user_store['loaded'] and user_store['data'] is not None:
+            # Use custom data for search (hybrid search with user embeddings)
+            cols_to_use = selected_columns if selected_columns != ['Summary', 'Description'] else user_store.get('selectedColumns', selected_columns)
+            
+            logger.info(f"📤 Using custom uploaded data: {user_store['fileName']}")
+            logger.info(f"👤 User ID: {user_id}")
             logger.info(f"🎯 Selected columns for search: {cols_to_use}")
+            
             start_time = time.time()
             results = search_custom_data(
                 query, 
-                custom_data_store['data'], 
+                user_store['data'], 
                 top_k,
-                selected_columns=cols_to_use
+                selected_columns=cols_to_use,
+                user_id=user_id  # Pass user_id for embedding-based search
             )
             search_time = time.time() - start_time
             logger.info(f"✅ Found {len(results)} results in custom data in {search_time:.2f}s")
         else:
-            # Use default hybrid search system
-            logger.info(f"📁 Using default data")
-            logger.info(f"🎯 Selected columns for search: {selected_columns}")
-            start_time = time.time()
-            search = get_search_system()
-            results = search.search(
-                query=query,
-                application=application,
-                platform=platform,
-                version=version,
-                language=language,
-                top_k=top_k,
-                selected_columns=selected_columns  # Pass selected columns
-            )
-            search_time = time.time() - start_time
-            logger.info(f"✅ Found {len(results)} results in {search_time:.2f}s")
+            # No data loaded - user must upload their own data
+            logger.warning(f"⚠️  No data uploaded for user: {user_id}")
+            return jsonify({
+                'success': False,
+                'error': 'No data uploaded. Please upload your data first.',
+                'message': 'You must upload your data before searching. Go to Data Upload page.',
+                'userId': user_id
+            }), 400
+        
+        # Clean NaN values from results (JSON doesn't support NaN)
+        import math
+        def clean_nan(obj):
+            """Recursively replace NaN values with None or 0"""
+            if isinstance(obj, dict):
+                return {k: clean_nan(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [clean_nan(item) for item in obj]
+            elif isinstance(obj, float) and (math.isnan(obj) or math.isinf(obj)):
+                return 0.0  # Replace NaN/Inf with 0
+            else:
+                return obj
+        
+        cleaned_results = clean_nan(results)
         
         # Return results
         return jsonify({
@@ -257,8 +457,8 @@ def search_reports():
                 'version': version,
                 'language': language
             },
-            'results': results,
-            'count': len(results),
+            'results': cleaned_results,
+            'count': len(cleaned_results),
             'search_time': round(search_time, 2)
         })
         
@@ -285,10 +485,15 @@ def get_stats():
     }
     """
     try:
-        # Check if custom data is loaded
-        if custom_data_store['loaded'] and custom_data_store['data'] is not None:
-            df = custom_data_store['data']
-            logger.info(f"📊 Getting stats from custom data: {len(df)} rows")
+        # Get user_id from query parameter
+        user_id = request.args.get('user_id', 'anonymous')
+        
+        # Get user-specific data store
+        user_store = get_user_data_store(user_id)
+        
+        if user_store['loaded'] and user_store['data'] is not None:
+            df = user_store['data']
+            logger.info(f"📊 Getting stats from custom data for user {user_id}: {len(df)} rows")
             
             # Calculate statistics from custom data
             stats = {
@@ -313,27 +518,23 @@ def get_stats():
                 'success': True,
                 'stats': stats,
                 'customDataLoaded': True,
-                'fileName': custom_data_store['fileName']
+                'fileName': user_store['fileName'],
+                'userId': user_id
             })
         else:
-            # Use default search system
-            search = get_search_system()
-            
-            # Calculate statistics
-            stats = {
-                'total_reports': len(search.df),
-                'platforms': {
-                    'android': int((search.df['Platform'] == 'android').sum()),
-                    'ios': int((search.df['Platform'] == 'ios').sum()),
-                    'unknown': int((search.df['Platform'] == 'unknown').sum())
-                },
-                'applications': search.df['Application'].value_counts().to_dict() if 'Application' in search.df.columns else {}
-            }
+            # No data loaded for this user
+            logger.info(f"⚠️  No data loaded for user: {user_id}")
             
             return jsonify({
                 'success': True,
-                'stats': stats,
-                'customDataLoaded': False
+                'stats': {
+                    'total_reports': 0,
+                    'platforms': {},
+                    'applications': {}
+                },
+                'customDataLoaded': False,
+                'message': 'No data uploaded. Please upload your data first.',
+                'userId': user_id
             })
         
     except Exception as e:
@@ -347,6 +548,38 @@ def get_stats():
 @app.route('/api/applications', methods=['GET'])
 def get_applications():
     """Get list of available applications"""
+    try:
+        # Check if custom data is loaded
+        if custom_data_store['loaded'] and custom_data_store['data'] is not None:
+            df = custom_data_store['data']
+            
+            if 'Application' not in df.columns:
+                applications = []
+            else:
+                applications = sorted(df['Application'].unique().tolist())
+            
+            return jsonify({
+                'success': True,
+                'applications': applications
+            })
+        else:
+            # No data loaded
+            return jsonify({
+                'success': True,
+                'applications': []
+            })
+        
+    except Exception as e:
+        logger.error(f"❌ Applications error: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/applications_OLD', methods=['GET'])
+def get_applications_old():
+    """Get list of available applications - OLD VERSION"""
     try:
         search = get_search_system()
         
@@ -396,16 +629,35 @@ def create_report():
         # Get request data
         data = request.get_json()
         
-        logger.info(f"📥 Received create_report request with data keys: {list(data.keys()) if data else 'None'}")
-        if data and 'replace_report' in data:
-            logger.info(f"🔍 replace_report parameter found: {data.get('replace_report')}")
-            logger.info(f"🔍 old_report_summary parameter: {data.get('old_report_summary')}")
+        import uuid
+        request_id = str(uuid.uuid4())[:8]
         
-        if not data or 'summary' not in data or 'description' not in data:
+        logger.info(f"[{request_id}] 📥 Received create_report request with data keys: {list(data.keys()) if data else 'None'}")
+        logger.info(f"[{request_id}] 📝 Full data: {data}")
+        
+        if data and 'replace_report' in data:
+            logger.info(f"[{request_id}] 🔍 replace_report parameter found: {data.get('replace_report')}")
+            logger.info(f"[{request_id}] 🔍 old_report_summary parameter: {data.get('old_report_summary')}")
+        
+        if not data:
+            logger.error(f"[{request_id}] ❌ VALIDATION FAILED: No data received!")
             return jsonify({
                 'success': False,
-                'error': 'Missing required fields: summary, description'
+                'error': 'No data received'
             }), 400
+        
+        if 'summary' not in data:
+            logger.error(f"[{request_id}] ❌ VALIDATION FAILED: Missing summary field. Data keys: {list(data.keys())}")
+            return jsonify({
+                'success': False,
+                'error': 'Missing required field: summary'
+            }), 400
+        
+        logger.info(f"[{request_id}] ✅ Validation passed: summary found = '{data['summary']}'")
+        
+        # Get user_id from request
+        user_id = data.get('userId') or data.get('user_id', 'anonymous')
+        logger.info(f"👤 Create report request from user: {user_id}")
         
         # Check if we're replacing an old report
         replace_report = data.get('replace_report', False)
@@ -413,6 +665,12 @@ def create_report():
         old_report_id = data.get('old_report_id', '')
         
         logger.info(f"🎯 replace_report={replace_report}, old_report_summary='{old_report_summary}'")
+        
+        # DEBUG: Check user store status
+        user_store = get_user_data_store(user_id)
+        logger.info(f"🔍 DEBUG user_store: loaded={user_store.get('loaded')}, data_is_none={user_store.get('data') is None}")
+        if user_store.get('data') is not None:
+            logger.info(f"🔍 DEBUG user_store data shape: {user_store['data'].shape}")
         
         # Detect application from summary
         summary_lower = data['summary'].lower()
@@ -457,20 +715,18 @@ def create_report():
             'Application': application
         }
         
-        # Check if custom data is loaded
-        global custom_data_store
-        
-        if custom_data_store['loaded'] and custom_data_store['data'] is not None:
-            # Append to custom data
-            logger.info(f"📤 Appending to custom data: {custom_data_store['fileName']}")
+        # User store already retrieved above (line 640)
+        if user_store['loaded'] and user_store['data'] is not None:
+            # Append to user's custom data
+            logger.info(f"📤 Appending to user {user_id}'s data: {user_store['fileName']}")
             
             # Create new row with custom data columns
-            custom_row = {col: '' for col in custom_data_store['data'].columns}
+            custom_row = {col: '' for col in user_store['data'].columns}
             
             # Map ALL form data fields to custom columns dynamically
             for key, value in data.items():
                 # Try to find matching column (exact match or partial match)
-                for col in custom_data_store['data'].columns:
+                for col in user_store['data'].columns:
                     col_lower = col.lower()
                     key_lower = key.lower()
                     
@@ -480,7 +736,7 @@ def create_report():
                         break
             
             # Also try common mappings
-            for col in custom_data_store['data'].columns:
+            for col in user_store['data'].columns:
                 col_lower = col.lower()
                 if 'summary' in col_lower or 'özet' in col_lower:
                     if not custom_row[col]:  # Only if not already set
@@ -501,12 +757,12 @@ def create_report():
             # If replacing an old report, delete it first
             if replace_report and old_report_summary:
                 logger.info(f"🔄 Replacing old report: '{old_report_summary}'")
-                logger.info(f"📊 Current DataFrame shape: {custom_data_store['data'].shape}")
-                logger.info(f"📋 Available columns: {custom_data_store['data'].columns.tolist()}")
+                logger.info(f"📊 Current DataFrame shape: {user_store['data'].shape}")
+                logger.info(f"📋 Available columns: {user_store['data'].columns.tolist()}")
                 
                 # Find the summary column (case-insensitive)
                 summary_col = None
-                for col in custom_data_store['data'].columns:
+                for col in user_store['data'].columns:
                     if 'summary' in col.lower() or 'özet' in col.lower():
                         summary_col = col
                         logger.info(f"✓ Found summary column: '{summary_col}'")
@@ -514,38 +770,84 @@ def create_report():
                 
                 if summary_col:
                     # Find and remove rows with matching summary
-                    mask = custom_data_store['data'][summary_col].astype(str).str.lower().str.contains(
+                    mask = user_store['data'][summary_col].astype(str).str.lower().str.contains(
                         old_report_summary.lower(), 
                         na=False,
                         regex=False
                     )
-                    rows_before = len(custom_data_store['data'])
-                    matching_rows = custom_data_store['data'][mask]
+                    rows_before = len(user_store['data'])
+                    matching_rows = user_store['data'][mask]
                     logger.info(f"🔍 Found {len(matching_rows)} matching row(s):")
                     for idx, row in matching_rows.iterrows():
                         logger.info(f"   Row {idx}: {row[summary_col][:80]}")
                     
-                    custom_data_store['data'] = custom_data_store['data'][~mask]
-                    rows_after = len(custom_data_store['data'])
+                    user_store['data'] = user_store['data'][~mask]
+                    rows_after = len(user_store['data'])
                     logger.info(f"🗑️  Deleted {rows_before - rows_after} old report(s)")
                 else:
-                    logger.warning(f"⚠️  Could not find summary column in: {custom_data_store['data'].columns.tolist()}")
+                    logger.warning(f"⚠️  Could not find summary column in: {user_store['data'].columns.tolist()}")
             
             # Append to DataFrame
-            custom_data_store['data'] = pd.concat([
-                custom_data_store['data'],
+            user_store['data'] = pd.concat([
+                user_store['data'],
                 pd.DataFrame([custom_row])
             ], ignore_index=True)
             
-            custom_data_store['rowCount'] = len(custom_data_store['data'])
-            report_id = custom_data_store['rowCount']
+            user_store['rowCount'] = len(user_store['data'])
+            report_id = user_store['rowCount']
             
-            # CRITICAL: Save to CSV file!
-            csv_path = f"data/user_data/{custom_data_store.get('fileName', 'custom_data.csv')}"
+            # Save to user's CSV file (both in user_data and user_embeddings)
+            csv_path = f"data/user_data/{user_store.get('fileName', 'custom_data.csv')}"
             os.makedirs(os.path.dirname(csv_path), exist_ok=True)
-            custom_data_store['data'].to_csv(csv_path, index=False, encoding='utf-8')
+            user_store['data'].to_csv(csv_path, index=False, encoding='utf-8')
             
-            logger.info(f"✅ Report added to custom data and saved to {csv_path}. New count: {report_id}")
+            # Also save to user_embeddings directory for persistence
+            user_embeddings_dir = Path('data/user_embeddings') / user_id
+            user_embeddings_dir.mkdir(parents=True, exist_ok=True)
+            user_data_file = user_embeddings_dir / 'data.csv'
+            user_store['data'].to_csv(user_data_file, index=False)
+            
+            # CRITICAL: Reload data from disk to ensure consistency
+            # This ensures subsequent searches use the updated data
+            user_store['data'] = pd.read_csv(user_data_file)
+            user_store['rowCount'] = len(user_store['data'])
+            
+            # Update user store
+            set_user_data_store(user_id, user_store)
+            
+            logger.info(f"✅ Report added to user {user_id}'s data and saved. New count: {report_id}")
+            logger.info(f"🔄 Data reloaded from disk to ensure consistency")
+            
+            # CRITICAL: Regenerate embeddings for updated data
+            # Do this SYNCHRONOUSLY to ensure search results are correct
+            logger.info(f"🔄 Regenerating embeddings for user {user_id}...")
+            
+            try:
+                from src.user_embedding_pipeline import create_user_embeddings
+                
+                # Get text columns from metadata
+                text_columns = user_store.get('textColumns', ['Summary', 'Description'])
+                
+                logger.info(f"📝 Using text columns: {text_columns}")
+                
+                # Regenerate embeddings SYNCHRONOUSLY
+                success = create_user_embeddings(
+                    user_id=user_id,
+                    df=user_store['data'],
+                    text_columns=text_columns
+                )
+                
+                if success:
+                    logger.info(f"✅ Embeddings regenerated successfully for user {user_id}")
+                    embeddings_updated = True
+                else:
+                    logger.warning(f"⚠️  Embedding regeneration failed for user {user_id}")
+                    embeddings_updated = False
+                    
+            except Exception as e:
+                logger.error(f"❌ Error regenerating embeddings: {e}")
+                logger.exception(e)
+                embeddings_updated = False
         else:
             # Use default CSV path
             csv_path = 'data/data_with_application.csv'
@@ -590,11 +892,16 @@ def create_report():
         
         logger.info(f"✅ New report created: ID={report_id}, App={application}, Summary={data['summary'][:50]}...")
         
+        # NOTE: Embeddings should NOT be updated here for user-specific mode
+        # Users should re-upload their data or we should implement incremental embedding updates
+        
         return jsonify({
             'success': True,
             'message': 'Report created successfully',
             'report_id': report_id,
-            'application': application
+            'application': application,
+            'userId': user_id,
+            'embeddings_updated': False  # Embeddings not auto-updated in user-specific mode
         })
         
     except Exception as e:
@@ -618,7 +925,9 @@ def upload_data():
         "data": [...],  # Array of objects
         "fileName": "data.csv",
         "columns": ["col1", "col2", ...],
-        "rowCount": 100
+        "rowCount": 100,
+        "userId": "firebase-user-id",  # REQUIRED
+        "textColumns": ["Summary", "Description"]  # Optional
     }
     """
     try:
@@ -626,8 +935,11 @@ def upload_data():
         from datetime import datetime
         import os
         import json
+        import sys
         
-        global custom_data_store
+        # Add src to path for imports
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+        from user_embedding_pipeline import create_user_embeddings
         
         # Get request data
         data = request.get_json()
@@ -638,13 +950,26 @@ def upload_data():
                 'error': 'Missing data field'
             }), 400
         
-        # Store custom data
-        custom_data_store['data'] = pd.DataFrame(data['data'])
-        custom_data_store['fileName'] = data.get('fileName', 'uploaded_data.csv')
-        custom_data_store['rowCount'] = len(data['data'])
-        custom_data_store['columns'] = data.get('columns', list(data['data'][0].keys()) if data['data'] else [])
-        custom_data_store['uploadedAt'] = datetime.now().isoformat()
-        custom_data_store['loaded'] = True
+        # Get user ID (REQUIRED)
+        user_id = data.get('userId') or data.get('username', 'anonymous')
+        logger.info(f"📥 Upload request from user: {user_id}")
+        
+        # Store custom data for THIS USER
+        df = pd.DataFrame(data['data'])
+        user_data_store = {
+            'data': df,
+            'fileName': data.get('fileName', 'uploaded_data.csv'),
+            'rowCount': len(data['data']),
+            'columns': data.get('columns', list(data['data'][0].keys()) if data['data'] else []),
+            'uploadedAt': datetime.now().isoformat(),
+            'loaded': True,
+            'userId': user_id,
+            'selectedColumns': [],
+            'metadataColumns': []
+        }
+        
+        # Save to user-specific store
+        set_user_data_store(user_id, user_data_store)
         
         # Save to user-specific datasets list
         username = data.get('username', 'demo')
@@ -662,12 +987,12 @@ def upload_data():
         
         # Add new dataset to user's list
         dataset_info = {
-            'name': custom_data_store['fileName'].replace('.csv', '').replace('_', ' ').title(),
-            'fileName': custom_data_store['fileName'],
-            'filePath': f'user_data/{username}/{custom_data_store["fileName"]}',
-            'rowCount': custom_data_store['rowCount'],
-            'columns': custom_data_store['columns'],
-            'columnCount': len(custom_data_store['columns']),
+            'name': user_data_store['fileName'].replace('.csv', '').replace('_', ' ').title(),
+            'fileName': user_data_store['fileName'],
+            'filePath': f'user_data/{username}/{user_data_store["fileName"]}',
+            'rowCount': user_data_store['rowCount'],
+            'columns': user_data_store['columns'],
+            'columnCount': len(user_data_store['columns']),
             'fileSize': f"{len(str(data['data'])) / (1024*1024):.2f} MB",
             'lastModified': datetime.now().strftime('%Y-%m-%d %H:%M'),
             'type': 'user',
@@ -677,7 +1002,7 @@ def upload_data():
         # Check if already exists, update or append
         exists = False
         for i, ds in enumerate(user_datasets):
-            if ds.get('fileName') == custom_data_store['fileName']:
+            if ds.get('fileName') == user_data_store['fileName']:
                 user_datasets[i] = dataset_info
                 exists = True
                 break
@@ -689,16 +1014,75 @@ def upload_data():
         with open(user_datasets_file, 'w') as f:
             json.dump(user_datasets, f, indent=2)
         
-        logger.info(f"✅ Custom data uploaded and saved: {custom_data_store['fileName']}, {custom_data_store['rowCount']} rows, {len(custom_data_store['columns'])} columns")
+        logger.info(f"✅ Custom data uploaded and saved for user {user_id}: {user_data_store['fileName']}, {user_data_store['rowCount']} rows, {len(user_data_store['columns'])} columns")
+        
+        # 🔥 CRITICAL: Create embeddings for this user's data!
+        try:
+            logger.info(f"🔄 Creating embeddings for user: {user_id}")
+            
+            # Get text columns (from request or auto-detect)
+            text_columns = data.get('textColumns')
+            if text_columns:
+                logger.info(f"📝 Using provided text columns: {text_columns}")
+            else:
+                logger.info(f"🔍 Auto-detecting text columns...")
+            
+            # Run embedding pipeline
+            success = create_user_embeddings(
+                user_id=user_id,
+                df=df,
+                text_columns=text_columns,
+                config={
+                    'fileName': user_data_store['fileName'],
+                    'metadataColumns': user_data_store.get('metadataColumns', [])
+                }
+            )
+            
+            if success:
+                logger.info(f"✅ Embeddings created successfully for user: {user_id}")
+                
+                # Save original data to disk for persistence
+                user_embeddings_dir = Path('data/user_embeddings') / user_id
+                data_file = user_embeddings_dir / 'data.csv'
+                try:
+                    df.to_csv(data_file, index=False)
+                    logger.info(f"💾 Saved user data to disk: {data_file}")
+                except Exception as e:
+                    logger.error(f"❌ Error saving user data to disk: {e}")
+                
+                # Update user store with embedding info
+                user_store = get_user_data_store(user_id)
+                user_store['embeddingsCreated'] = True
+                user_store['embeddingsPath'] = f"data/user_embeddings/{user_id}"
+                set_user_data_store(user_id, user_store)
+            else:
+                logger.warning(f"⚠️ Embedding creation failed for user: {user_id}")
+                user_store = get_user_data_store(user_id)
+                user_store['embeddingsCreated'] = False
+                set_user_data_store(user_id, user_store)
+                
+        except Exception as e:
+            logger.error(f"❌ Embedding creation error for user {user_id}: {e}")
+            import traceback
+            traceback.print_exc()
+            user_store = get_user_data_store(user_id)
+            user_store['embeddingsCreated'] = False
+            set_user_data_store(user_id, user_store)
+        
+        # Get final user store for response
+        final_user_store = get_user_data_store(user_id)
         
         return jsonify({
             'success': True,
-            'message': 'Data uploaded successfully',
+            'message': 'Data uploaded and embeddings created successfully',
             'info': {
-                'fileName': custom_data_store['fileName'],
-                'rowCount': custom_data_store['rowCount'],
-                'columns': custom_data_store['columns'],
-                'uploadedAt': custom_data_store['uploadedAt']
+                'fileName': final_user_store['fileName'],
+                'rowCount': final_user_store['rowCount'],
+                'columns': final_user_store['columns'],
+                'uploadedAt': final_user_store['uploadedAt'],
+                'embeddingsCreated': final_user_store.get('embeddingsCreated', False),
+                'embeddingsPath': final_user_store.get('embeddingsPath', None),
+                'userId': user_id
             }
         })
         
@@ -720,13 +1104,12 @@ def update_selected_columns():
     
     Request Body:
     {
+        "userId": "user123",  # User ID
         "selectedColumns": ["Summary", "Description", ...],  # For cross-encoder
         "metadataColumns": ["Platform", "App Version", ...]  # For form display
     }
     """
     try:
-        global custom_data_store
-        
         data = request.get_json()
         
         if not data or 'selectedColumns' not in data:
@@ -735,18 +1118,40 @@ def update_selected_columns():
                 'error': 'Missing selectedColumns field'
             }), 400
         
-        # Update selected columns
-        custom_data_store['selectedColumns'] = data['selectedColumns']
-        custom_data_store['metadataColumns'] = data.get('metadataColumns', [])
+        # Get user ID
+        user_id = data.get('userId') or data.get('username', 'anonymous')
+        user_store = get_user_data_store(user_id)
         
-        logger.info(f"✅ Cross-encoder columns updated: {custom_data_store['selectedColumns']}")
-        logger.info(f"✅ Metadata columns updated: {custom_data_store['metadataColumns']}")
+        # Update selected columns
+        user_store['selectedColumns'] = data['selectedColumns']
+        user_store['metadataColumns'] = data.get('metadataColumns', [])
+        set_user_data_store(user_id, user_store)
+        
+        # Also update metadata.json for persistence
+        try:
+            user_embeddings_dir = Path('data/user_embeddings') / user_id
+            metadata_file = user_embeddings_dir / 'metadata.json'
+            if metadata_file.exists():
+                import json
+                with open(metadata_file, 'r') as f:
+                    metadata = json.load(f)
+                metadata['textColumns'] = data['selectedColumns']
+                metadata['metadataColumns'] = data.get('metadataColumns', [])
+                with open(metadata_file, 'w') as f:
+                    json.dump(metadata, f, indent=2)
+                logger.info(f"💾 Updated metadata.json for user {user_id}")
+        except Exception as e:
+            logger.error(f"❌ Error updating metadata.json: {e}")
+        
+        logger.info(f"✅ Cross-encoder columns updated for user {user_id}: {user_store['selectedColumns']}")
+        logger.info(f"✅ Metadata columns updated for user {user_id}: {user_store['metadataColumns']}")
         
         return jsonify({
             'success': True,
             'message': 'Selected columns updated',
-            'selectedColumns': custom_data_store['selectedColumns'],
-            'metadataColumns': custom_data_store['metadataColumns']
+            'selectedColumns': user_store['selectedColumns'],
+            'metadataColumns': user_store['metadataColumns'],
+            'userId': user_id
         })
         
     except Exception as e:
@@ -791,35 +1196,29 @@ def clear_custom_data():
 
 @app.route('/api/data_status', methods=['GET'])
 def data_status():
-    """Get current data status (custom or default)"""
+    """Get current data status for a specific user"""
     try:
-        global custom_data_store
+        # Get user_id from query parameter
+        user_id = request.args.get('user_id', 'anonymous')
         
-        if custom_data_store['loaded']:
+        user_store = get_user_data_store(user_id)
+        
+        if user_store['loaded']:
             return jsonify({
                 'success': True,
                 'custom_data_loaded': True,
-                'custom_data_columns': custom_data_store['columns'],
-                'fileName': custom_data_store['fileName'],
-                'rowCount': custom_data_store['rowCount']
+                'custom_data_columns': user_store['columns'],
+                'fileName': user_store['fileName'],
+                'rowCount': user_store['rowCount'],
+                'userId': user_id
             })
         else:
-            # Get default data columns from HybridSearch system
-            try:
-                search = get_search_system()
-                default_columns = list(search.df.columns)
-            except Exception as e:
-                logger.warning(f"Could not load default data info: {e}")
-                default_columns = [
-                    'Summary', 'Description', 'Affects Version', 'Component', 
-                    'Priority', 'Custom field (Severity)', 'Custom field (Problem Type)', 
-                    'Custom field (Frequency)', 'Application', 'App Version'
-                ]
-            
+            # No data loaded for this user
             return jsonify({
                 'success': True,
                 'custom_data_loaded': False,
-                'default_data_columns': default_columns
+                'message': 'No data uploaded for this user',
+                'userId': user_id
             })
         
     except Exception as e:
@@ -835,14 +1234,19 @@ def data_status():
 def get_column_values(column_name):
     """Get unique values for a specific column"""
     try:
-        global custom_data_store
+        # Get user ID from query params
+        user_id = request.args.get('user_id', 'anonymous')
+        user_store = get_user_data_store(user_id)
         
-        # Use custom data if loaded, otherwise use default
-        if custom_data_store['loaded'] and custom_data_store['data'] is not None:
-            df = custom_data_store['data']
-        else:
-            search = get_search_system()
-            df = search.df
+        # Check if user has data
+        if not user_store['loaded'] or user_store['data'] is None:
+            return jsonify({
+                'success': False,
+                'error': 'No data uploaded. Please upload your data first.',
+                'userId': user_id
+            }), 400
+        
+        df = user_store['data']
         
         # Get unique values for the column
         if column_name in df.columns:
@@ -854,12 +1258,14 @@ def get_column_values(column_name):
                 'success': True,
                 'column': column_name,
                 'values': unique_values,
-                'count': len(unique_values)
+                'count': len(unique_values),
+                'userId': user_id
             })
         else:
             return jsonify({
                 'success': False,
-                'error': f'Column {column_name} not found'
+                'error': f'Column {column_name} not found',
+                'userId': user_id
             }), 404
             
     except Exception as e:
@@ -885,42 +1291,10 @@ def get_available_datasets():
         # Get username from query params (for user-specific datasets)
         username = request.args.get('username', 'default')
         
-        # List of default CSV files
-        csv_files = [
-            'data_with_application.csv',
-            'data_with_enhanced_app_version.csv',
-            'data_with_app_version.csv',
-            'data_cleaned.csv'
-        ]
+        # NO DEFAULT DATASETS - Users must upload their own data
+        # Only show user-specific datasets
         
-        # Add default datasets
-        for csv_file in csv_files:
-            file_path = os.path.join(data_dir, csv_file)
-            if os.path.exists(file_path):
-                try:
-                    # Read first few rows to get info (with semicolon delimiter)
-                    df = pd.read_csv(file_path, nrows=5, encoding='utf-8', sep=';', on_bad_lines='skip')
-                    file_stats = os.stat(file_path)
-                    
-                    # Get full row count (faster method using line count)
-                    with open(file_path, 'r', encoding='utf-8') as f:
-                        row_count = sum(1 for line in f) - 1  # -1 for header
-                    
-                    datasets.append({
-                        'name': csv_file.replace('.csv', '').replace('_', ' ').title(),
-                        'fileName': csv_file,
-                        'filePath': file_path,
-                        'rowCount': row_count,
-                        'columns': df.columns.tolist(),
-                        'columnCount': len(df.columns),
-                        'fileSize': f"{file_stats.st_size / (1024*1024):.2f} MB",
-                        'lastModified': datetime.fromtimestamp(file_stats.st_mtime).strftime('%Y-%m-%d %H:%M'),
-                        'type': 'default',
-                        'owner': 'system'
-                    })
-                except Exception as e:
-                    logger.error(f"Error reading {csv_file}: {e}")
-                    continue
+        logger.info(f"📋 Getting datasets for user: {username}")
         
         # Add user-specific datasets from localStorage data
         user_datasets_file = os.path.join(data_dir, 'user_datasets', f'{username}.json')
@@ -1032,22 +1406,45 @@ def internal_error(error):
 
 def main():
     """Main function to run the server"""
+    # Load environment variables
+    from dotenv import load_dotenv
+    load_dotenv()
+    
     print("\n" + "=" * 80)
     print("🚀 BUG REPORT DUPLICATE DETECTION API SERVER")
     print("=" * 80)
-    print("\nInitializing...")
+    print("\n⚠️  USER-SPECIFIC MODE:")
+    print("   • No default data loaded")
+    print("   • Each user must upload their own data")
+    print("   • Users can only see their own data")
+    print("   • Embeddings are created per user")
+    print("   • Firebase Storage caching enabled")
     
-    # Pre-initialize search system
-    get_search_system()
+    # DO NOT pre-initialize search system - users will upload their own data
+    # get_search_system()  # REMOVED: No default Turkcell data
+    
+    # Check Firebase configuration
+    firebase_enabled = os.getenv('USE_FIREBASE_CACHE', 'True').lower() == 'true'
+    if firebase_enabled:
+        print("\n🔥 Firebase Configuration:")
+        service_account = os.getenv('FIREBASE_SERVICE_ACCOUNT', 'Not set')
+        storage_bucket = os.getenv('FIREBASE_STORAGE_BUCKET', 'Not set')
+        print(f"   • Service Account: {service_account}")
+        print(f"   • Storage Bucket: {storage_bucket}")
     
     print("\n" + "=" * 80)
     print("✅ SERVER READY!")
     print("=" * 80)
+    
+    # Get port from environment (Railway sets this)
+    port = int(os.getenv('PORT', 5001))
+    
+    print(f"\n📍 Server will start on port: {port}")
     print("\n📍 Endpoints:")
-    print("   • http://localhost:5000/api/health     - Health check")
-    print("   • http://localhost:5000/api/search     - Search similar reports (POST)")
-    print("   • http://localhost:5000/api/stats      - Get system statistics")
-    print("   • http://localhost:5000/api/applications - Get available applications")
+    print(f"   • http://localhost:{port}/api/health     - Health check")
+    print(f"   • http://localhost:{port}/api/search     - Search similar reports (POST)")
+    print(f"   • http://localhost:{port}/api/stats      - Get system statistics")
+    print(f"   • http://localhost:{port}/api/applications - Get available applications")
     print("\n🌐 Frontend:")
     print("   • Open web/index.html in your browser")
     print("\n💡 Usage:")
@@ -1059,8 +1456,8 @@ def main():
     # Run Flask server
     app.run(
         host='0.0.0.0',
-        port=5001,  # Using 5001 because macOS AirPlay uses 5000
-        debug=False,  # Set to True for development
+        port=port,
+        debug=os.getenv('FLASK_DEBUG', 'False').lower() == 'true',
         threaded=True
     )
 

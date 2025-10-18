@@ -3,9 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Bug Report System</title>
+    <title>Giriş - Bug Report System</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    
     <style>
         /* Animated Background Section */
         .animated-bg {
@@ -23,7 +29,6 @@
             background: linear-gradient(135deg, #0A0E27 0%, #1a1f3a 100%);
         }
 
-        /* Animated Gradient Effect */
         .animated-bg::before {
             content: '';
             position: absolute;
@@ -34,15 +39,10 @@
         }
 
         @keyframes gradientMove {
-            0% {
-                transform: translateY(-100%);
-            }
-            100% {
-                transform: translateY(100%);
-            }
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
         }
 
-        /* Animated Blocks */
         .animated-bg span {
             position: relative;
             display: block;
@@ -101,7 +101,6 @@
             box-shadow: 0 0 20px rgba(255, 204, 0, 0.5);
         }
         
-        /* Form Styling */
         .form-group {
             margin-bottom: 25px;
         }
@@ -152,6 +151,11 @@
         .btn-primary:active {
             opacity: 0.8;
         }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
         
         .error-message {
             background: #FEE2E2;
@@ -167,7 +171,38 @@
             display: block;
         }
 
-        /* Responsive */
+        .register-link {
+            text-align: center;
+            margin-top: var(--spacing-lg);
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+
+        .register-link a {
+            color: #FFCC00;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .register-link a:hover {
+            text-decoration: underline;
+        }
+
+        .forgot-password {
+            text-align: right;
+            margin-top: 8px;
+        }
+
+        .forgot-password a {
+            color: #888;
+            text-decoration: none;
+            font-size: 0.85rem;
+        }
+
+        .forgot-password a:hover {
+            color: #FFCC00;
+        }
+
         @media (max-width: 900px) {
             .animated-bg span {
                 width: calc(10vw - 2px);
@@ -190,7 +225,6 @@
 <body>
     <!-- Animated Background -->
     <section class="animated-bg">
-        <!-- 250 animated spans for grid effect -->
         <script>
             for (let i = 0; i < 250; i++) {
                 document.write('<span></span>');
@@ -201,38 +235,42 @@
     <div class="login-container">
         <!-- Logo -->
         <div class="login-header">
-            <div class="login-logo"></div>
+            <div class="login-logo">
+                <img src="https://ffo3gv1cf3ir.merlincdn.net/SiteAssets/Bireysel/Navigasyon/turkcell-logo.png?20251016_03" 
+                     alt="Turkcell Logo" 
+                     style="width: 100%; height: 100%; object-fit: contain; padding: 10px;">
+            </div>
             <h1>Sistem Girişi</h1>
             <p>Bug Report Duplicate Detection System</p>
         </div>
 
         <!-- Error Message -->
         <div id="errorMessage" class="error-message">
-            <strong> Hata!</strong>
+            <strong>⚠️ Hata!</strong>
             <p id="errorText"></p>
         </div>
 
         <!-- Login Form -->
         <form id="loginForm">
             <div class="form-group">
-                <label for="username" class="form-label">
-                    <span>Kullanıcı Ad</span>
+                <label for="email" class="form-label">
+                    <span>📧 E-posta</span>
                     <span class="required">*</span>
                 </label>
                 <input 
-                    type="text" 
-                    id="username" 
-                    name="username" 
+                    type="email" 
+                    id="email" 
+                    name="email" 
                     class="form-input"
                     placeholder="kullanici@turkcell.com.tr"
                     required
-                    autocomplete="username"
+                    autocomplete="email"
                 >
             </div>
 
             <div class="form-group">
                 <label for="password" class="form-label">
-                    <span>Şifre</span>
+                    <span>🔒 Şifre</span>
                     <span class="required">*</span>
                 </label>
                 <input 
@@ -240,26 +278,38 @@
                     id="password" 
                     name="password" 
                     class="form-input"
-                    placeholder=""
+                    placeholder="••••••••"
                     required
                     autocomplete="current-password"
                 >
+                <div class="forgot-password">
+                    <a href="#" onclick="resetPassword(); return false;">Şifremi unuttum?</a>
+                </div>
             </div>
 
-            <button type="submit" class="btn btn-primary" id="loginBtn" style="width: 100%; margin-top: var(--spacing-lg);">
-                <span>Giriş Yap</span>
+            <button type="submit" class="btn btn-primary" id="loginBtn">
+                <span>🚀 Giriş Yap</span>
             </button>
         </form>
 
-        <!-- Demo Credentials -->
+        <!-- Register Link -->
+        <div class="register-link">
+            Henüz hesabınız yok mu? <a href="register.html">Kayıt Ol</a>
+        </div>
+
+        <!-- Demo Mode -->
         <div style="margin-top: var(--spacing-xl); padding: var(--spacing-md); background: rgba(255, 204, 0, 0.1); border: 1px solid #FFCC00; border-radius: var(--radius-md);">
             <p style="font-size: 0.85rem; color: #FFCC00; margin: 0;">
-                <strong>Demo Giriş:</strong><br>
-                Kullanıcı: <code style="background: #444; padding: 2px 6px; border-radius: 3px;">demo</code> / 
-                <code style="background: #444; padding: 2px 6px; border-radius: 3px;">test123</code>
+                <strong>💡 Demo Mod:</strong><br>
+                Firebase yapılandırılmamışsa demo hesabı kullanabilirsiniz.<br>
+                E-posta: <code style="background: #444; padding: 2px 6px; border-radius: 3px;">demo@turkcell.com.tr</code><br>
+                Şifre: <code style="background: #444; padding: 2px 6px; border-radius: 3px;">demo123</code>
             </p>
         </div>
     </div>
+
+    <!-- Firebase Config -->
+    <script src="firebase-config.js"></script>
 
     <script>
         const form = document.getElementById('loginForm');
@@ -267,54 +317,211 @@
         const errorMessage = document.getElementById('errorMessage');
         const errorText = document.getElementById('errorText');
 
-        // Demo users
-        const USERS = {
-            'demo': { password: 'test123', role: 'admin', name: 'Demo User' },
-            'admin@turkcell.com.tr': { password: 'admin123', role: 'admin', name: 'Admin User' },
-            'user@turkcell.com.tr': { password: 'user123', role: 'user', name: 'Standard User' }
+        // Demo users (fallback if Firebase is not configured)
+        const DEMO_USERS = {
+            'demo@turkcell.com.tr': { 
+                password: 'demo123', 
+                role: 'admin', 
+                name: 'Demo User' 
+            },
+            'admin@turkcell.com.tr': { 
+                password: 'admin123', 
+                role: 'admin', 
+                name: 'Admin User' 
+            }
         };
 
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
+        // Check if Firebase is configured
+        const isFirebaseConfigured = () => {
+            try {
+                const config = firebase.app().options;
+                return config.apiKey !== 'YOUR_API_KEY';
+            } catch (e) {
+                return false;
+            }
+        };
+
+        // Show error
+        function showError(message) {
+            errorText.textContent = message;
+            errorMessage.classList.add('show');
+        }
+
+        // Hide error
+        function hideError() {
+            errorMessage.classList.remove('show');
+        }
+
+        // Reset password
+        async function resetPassword() {
+            const email = prompt('E-posta adresinizi girin:');
             
-            const username = document.getElementById('username').value.trim();
-            const password = document.getElementById('password').value;
-            
-            // Disable button
-            loginBtn.disabled = true;
-            loginBtn.innerHTML = '<span> Giri yaplyor...</span>';
-            
-            // Simulate API call
-            setTimeout(() => {
-                // Validate credentials
-                const user = USERS[username];
+            if (!email) return;
+
+            if (!isFirebaseConfigured()) {
+                alert('Firebase yapılandırılmamış! Demo modda şifre sıfırlama mevcut değil.');
+                return;
+            }
+
+            try {
+                await auth.sendPasswordResetEmail(email);
+                alert('✅ Şifre sıfırlama e-postası gönderildi! Lütfen e-posta kutunuzu kontrol edin.');
+            } catch (error) {
+                console.error('Password reset error:', error);
+                alert('❌ Hata: ' + (error.message || 'Şifre sıfırlama e-postası gönderilemedi!'));
+            }
+        }
+
+        // Firebase login
+        async function loginWithFirebase(email, password) {
+            try {
+                const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                const user = userCredential.user;
                 
-                if (!user || user.password !== password) {
-                    // Show error
-                    errorText.textContent = 'Kullanıcı adı veya şifre hatalı!';
-                    errorMessage.classList.add('show');
-                    
-                    // Re-enable button
-                    loginBtn.disabled = false;
-                    loginBtn.innerHTML = '<span>Giriş Yap</span>';
-                    return;
-                }
+                console.log('✅ Firebase login successful:', user.uid);
                 
-                // Success - store session
+                // Get user data from Firestore
+                const userDoc = await db.collection('users').doc(user.uid).get();
+                const userData = userDoc.data();
+                
+                // Update last login
+                await db.collection('users').doc(user.uid).update({
+                    lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                // Create session
                 const session = {
-                    username: username,
-                    role: user.role,
-                    name: user.name,
-                    loginTime: new Date().toISOString()
+                    uid: user.uid,
+                    email: user.email,
+                    username: user.email,
+                    name: userData?.fullName || user.displayName || user.email,
+                    role: userData?.role || 'user',
+                    loginTime: new Date().toISOString(),
+                    authProvider: 'firebase'
                 };
                 
                 localStorage.setItem('userSession', JSON.stringify(session));
                 
-                // Redirect to data selection
+                console.log('✅ Session created:', session);
+                
+                // Redirect
                 window.location.href = 'data_selection.html';
-            }, 1000);
+                
+            } catch (error) {
+                throw error;
+            }
+        }
+
+        // Demo login (fallback)
+        function loginWithDemo(email, password) {
+            const user = DEMO_USERS[email];
+            
+            if (!user || user.password !== password) {
+                throw new Error('Kullanıcı adı veya şifre hatalı!');
+            }
+            
+            // Create demo session
+            const session = {
+                username: email,
+                email: email,
+                role: user.role,
+                name: user.name,
+                loginTime: new Date().toISOString(),
+                authProvider: 'demo'
+            };
+            
+            localStorage.setItem('userSession', JSON.stringify(session));
+            
+            console.log('✅ Demo login successful:', session);
+            
+            // Redirect
+            window.location.href = 'data_selection.html';
+        }
+
+        // Form submit
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            hideError();
+            
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            
+            // Validate
+            if (!email || !password) {
+                showError('Lütfen tüm alanları doldurun!');
+                return;
+            }
+            
+            // Set logging in flag to prevent auth state change redirect
+            isLoggingIn = true;
+            
+            // Disable button
+            loginBtn.disabled = true;
+            loginBtn.innerHTML = '<span>⏳ Giriş yapılıyor...</span>';
+            
+            try {
+                if (isFirebaseConfigured()) {
+                    // Try Firebase login
+                    console.log('🔥 Attempting Firebase login...');
+                    await loginWithFirebase(email, password);
+                } else {
+                    // Fallback to demo login
+                    console.log('💡 Firebase not configured, using demo login...');
+                    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate delay
+                    loginWithDemo(email, password);
+                }
+                
+            } catch (error) {
+                console.error('❌ Login error:', error);
+                
+                // Reset logging in flag on error
+                isLoggingIn = false;
+                
+                let errorMsg = 'Giriş yapılamadı!';
+                
+                // Handle Firebase errors
+                switch (error.code) {
+                    case 'auth/user-not-found':
+                        errorMsg = 'Kullanıcı bulunamadı!';
+                        break;
+                    case 'auth/wrong-password':
+                        errorMsg = 'Hatalı şifre!';
+                        break;
+                    case 'auth/invalid-email':
+                        errorMsg = 'Geçersiz e-posta adresi!';
+                        break;
+                    case 'auth/user-disabled':
+                        errorMsg = 'Bu hesap devre dışı bırakılmış!';
+                        break;
+                    case 'auth/too-many-requests':
+                        errorMsg = 'Çok fazla başarısız deneme! Lütfen daha sonra tekrar deneyin.';
+                        break;
+                    default:
+                        errorMsg = error.message || errorMsg;
+                }
+                
+                showError(errorMsg);
+                
+                // Re-enable button
+                loginBtn.disabled = false;
+                loginBtn.innerHTML = '<span>🚀 Giriş Yap</span>';
+            }
+        });
+
+        // Check if already logged in (only on page load, not during login process)
+        let isLoggingIn = false;
+        
+        auth.onAuthStateChanged((user) => {
+            // Only redirect if user exists, we're on login page, and not currently logging in
+            if (user && window.location.pathname.includes('login.html') && !isLoggingIn) {
+                console.log('✅ User already logged in, redirecting...');
+                // Small delay to prevent loop
+                setTimeout(() => {
+                    window.location.href = 'data_selection.html';
+                }, 100);
+            }
         });
     </script>
 </body>
 </html>
-

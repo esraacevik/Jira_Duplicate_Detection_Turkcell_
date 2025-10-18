@@ -31,6 +31,9 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app)  # Enable CORS for frontend requests
 
+# Increase max request size to 100MB (for large CSV uploads)
+app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100 MB
+
 # Initialize search system (singleton)
 search_system = None
 
@@ -1398,6 +1401,15 @@ def not_found(error):
         'success': False,
         'error': 'Endpoint not found'
     }), 404
+
+
+@app.errorhandler(413)
+def request_entity_too_large(error):
+    """Handle 413 Payload Too Large errors"""
+    return jsonify({
+        'success': False,
+        'error': 'Dosya çok büyük! Maksimum 100MB yükleyebilirsiniz. Lütfen daha küçük bir dosya deneyin veya veriyi birkaç parçaya bölün.'
+    }), 413
 
 
 @app.errorhandler(500)

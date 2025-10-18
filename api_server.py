@@ -1018,6 +1018,12 @@ def upload_data():
                 if df is None or len(df) == 0:
                     raise ValueError("Could not parse CSV file with any encoding/delimiter combination")
                 
+                if len(df.columns) <= 1:
+                    logger.warning(f"⚠️ Only {len(df.columns)} column(s) detected!")
+                    logger.warning(f"📋 Column names: {df.columns.tolist()}")
+                    logger.warning(f"🔍 First few rows:\n{df.head()}")
+                    raise ValueError(f"CSV appears to have only {len(df.columns)} column(s). Please check the delimiter. Expected comma (,), semicolon (;), tab, or pipe (|).")
+                
             except Exception as e:
                 logger.error(f"❌ Error reading CSV: {e}")
                 return jsonify({
@@ -1122,12 +1128,19 @@ def upload_data():
         try:
             logger.info(f"🔄 Creating embeddings for user: {user_id}")
             
-            # Get text columns (from request or auto-detect)
-            text_columns = data.get('textColumns')
-            if text_columns:
-                logger.info(f"📝 Using provided text columns: {text_columns}")
+            # Get text columns (only available in JSON upload, auto-detect for FormData)
+            text_columns = None
+            if request.files and 'file' in request.files:
+                # FormData upload - auto-detect text columns
+                logger.info(f"🔍 Auto-detecting text columns (FormData upload)...")
             else:
-                logger.info(f"🔍 Auto-detecting text columns...")
+                # JSON upload - use provided text columns if available
+                data = request.get_json()  # Re-fetch for embedding config
+                text_columns = data.get('textColumns') if data else None
+                if text_columns:
+                    logger.info(f"📝 Using provided text columns: {text_columns}")
+                else:
+                    logger.info(f"🔍 Auto-detecting text columns (JSON upload)...")
             
             # Run embedding pipeline
             success = create_user_embeddings(

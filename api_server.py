@@ -1408,6 +1408,7 @@ def main():
     """Main function to run the server"""
     # Load environment variables
     from dotenv import load_dotenv
+    import base64
     load_dotenv()
     
     print("\n" + "=" * 80)
@@ -1423,10 +1424,25 @@ def main():
     # DO NOT pre-initialize search system - users will upload their own data
     # get_search_system()  # REMOVED: No default Turkcell data
     
-    # Check Firebase configuration
+    # Handle Firebase Service Account (base64 or file path)
     firebase_enabled = os.getenv('USE_FIREBASE_CACHE', 'True').lower() == 'true'
     if firebase_enabled:
         print("\n🔥 Firebase Configuration:")
+        
+        # Check for base64 encoded service account
+        base64_service_account = os.getenv('FIREBASE_SERVICE_ACCOUNT_BASE64')
+        if base64_service_account:
+            try:
+                # Decode base64 and save to temp file
+                decoded = base64.b64decode(base64_service_account)
+                temp_path = '/tmp/firebase-service-account.json'
+                with open(temp_path, 'w') as f:
+                    f.write(decoded.decode('utf-8'))
+                os.environ['FIREBASE_SERVICE_ACCOUNT'] = temp_path
+                print(f"   ✅ Service Account decoded from base64 → {temp_path}")
+            except Exception as e:
+                print(f"   ⚠️  Failed to decode service account: {e}")
+        
         service_account = os.getenv('FIREBASE_SERVICE_ACCOUNT', 'Not set')
         storage_bucket = os.getenv('FIREBASE_STORAGE_BUCKET', 'Not set')
         print(f"   • Service Account: {service_account}")

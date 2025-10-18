@@ -990,7 +990,7 @@ def upload_data():
                     raise ValueError("File is empty (0 bytes)")
                 
                 # Try different delimiters and encodings
-                delimiters = [',', ';', '\t', '|']
+                delimiters = [';', ',', '\t', '|']  # Semicolon first (most common for European CSVs)
                 encodings = ['utf-8', 'latin-1', 'iso-8859-1', 'cp1252']
                 
                 df = None
@@ -1001,18 +1001,23 @@ def upload_data():
                                 io.BytesIO(file_content), 
                                 encoding=encoding,
                                 delimiter=delimiter,
-                                on_bad_lines='skip',  # Skip problematic lines
+                                quotechar='"',  # Handle quoted fields with newlines
+                                quoting=1,  # QUOTE_ALL
+                                doublequote=True,  # Handle escaped quotes
+                                on_bad_lines='skip',  # Skip truly problematic lines
                                 skipinitialspace=True,
-                                engine='python'  # Python engine is more forgiving
+                                engine='python',  # Python engine handles multi-line better
+                                skip_blank_lines=False  # Keep blank lines in quoted fields
                             )
                             # Check if we got valid data
                             if len(df) > 0 and len(df.columns) > 1:
                                 logger.info(f"✅ CSV parsed successfully: encoding={encoding}, delimiter='{delimiter}'")
                                 logger.info(f"📊 DataFrame loaded: {len(df)} rows, {len(df.columns)} columns")
+                                logger.info(f"📋 Columns: {df.columns.tolist()[:5]}...")  # Show first 5 columns
                                 break
-                        except (UnicodeDecodeError, pd.errors.ParserError) as e:
+                        except (UnicodeDecodeError, pd.errors.ParserError, Exception) as e:
                             continue
-                    if df is not None and len(df) > 0:
+                    if df is not None and len(df) > 0 and len(df.columns) > 1:
                         break
                 
                 if df is None or len(df) == 0:

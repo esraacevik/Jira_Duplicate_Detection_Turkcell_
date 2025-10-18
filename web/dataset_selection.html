@@ -356,7 +356,19 @@
                 btn.disabled = true;
                 btn.innerHTML = ' Ykleniyor...';
 
-                fetch(API_BASE_URL + '/load_dataset/' + selectedDataset, { method: 'POST' })
+                // Get userId from session
+                var session = JSON.parse(localStorage.getItem('userSession') || '{}');
+                var userId = session.uid || session.username || 'anonymous';
+
+                fetch(API_BASE_URL + '/load_dataset/' + selectedDataset, { 
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        userId: userId
+                    })
+                })
                     .then(function(response) { return response.json(); })
                     .then(function(data) {
                         if (data.success) {

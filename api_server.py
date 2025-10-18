@@ -1338,65 +1338,47 @@ def get_available_datasets():
 @app.route('/api/load_dataset/<dataset_name>', methods=['POST'])
 @cross_origin()
 def load_dataset(dataset_name):
-    """Load a specific dataset"""
+    """Load a specific dataset for a user"""
     try:
         import os
         import pandas as pd
         from datetime import datetime
         
-        global custom_data_store
+        # Get request body to extract user_id
+        data = request.get_json() or {}
+        user_id = data.get('userId') or data.get('username', 'anonymous')
         
-        # Check if this dataset is already loaded in custom_data_store
-        if (custom_data_store.get('loaded') and 
-            custom_data_store.get('fileName') == dataset_name and 
-            custom_data_store.get('data') is not None):
+        logger.info(f"📥 Load dataset request: {dataset_name} for user: {user_id}")
+        
+        # Get user's data store
+        user_store = get_user_data_store(user_id)
+        
+        # Check if this dataset is already loaded for this user
+        if (user_store.get('loaded') and 
+            user_store.get('fileName') == dataset_name and 
+            user_store.get('data') is not None):
             
-            logger.info(f"✅ Dataset already loaded: {dataset_name} ({custom_data_store['rowCount']} rows)")
+            logger.info(f"✅ Dataset already loaded for user {user_id}: {dataset_name} ({user_store['rowCount']} rows)")
             
             return jsonify({
                 'success': True,
                 'message': f'Dataset {dataset_name} already loaded',
-                'rowCount': custom_data_store['rowCount'],
-                'columns': custom_data_store['columns']
-            })
-        
-        # Try to load from file system (default datasets)
-        data_dir = 'data'
-        file_path = os.path.join(data_dir, dataset_name)
-        
-        if os.path.exists(file_path):
-            # Load the dataset (with semicolon delimiter)
-            df = pd.read_csv(file_path, encoding='utf-8', sep=';', on_bad_lines='skip')
-            
-            # Store in custom_data_store
-            custom_data_store = {
-                'data': df,
-                'fileName': dataset_name,
-                'rowCount': len(df),
-                'columns': df.columns.tolist(),
-                'selectedColumns': [],
-                'metadataColumns': [],
-                'uploadedAt': datetime.now().isoformat(),
-                'loaded': True
-            }
-            
-            logger.info(f"✅ Loaded dataset from file: {dataset_name} ({len(df)} rows)")
-            
-            return jsonify({
-                'success': True,
-                'message': f'Dataset {dataset_name} loaded successfully',
-                'rowCount': len(df),
-                'columns': df.columns.tolist()
+                'rowCount': user_store['rowCount'],
+                'columns': user_store['columns'],
+                'embeddingsCreated': user_store.get('embeddingsCreated', user_store.get('embeddingsReady', False))
             })
         else:
-            # Dataset not found in file system or custom_data_store
+            # User data not loaded - this shouldn't happen if they got to this point
+            logger.warning(f"⚠️ User {user_id} tried to load {dataset_name} but data not found")
             return jsonify({
                 'success': False,
-                'error': f'Dataset {dataset_name} not found. Please upload it first.'
+                'error': f'Dataset {dataset_name} not found for user. Please upload it first.'
             }), 404
         
     except Exception as e:
         logger.error(f"❌ Error loading dataset: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             'success': False,
             'error': str(e)

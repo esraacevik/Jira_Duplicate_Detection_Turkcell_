@@ -575,10 +575,12 @@ function replaceReport(index, summary, reportId) {
 
 // Get Match Quality
 function getMatchQuality(score) {
-    if (score >= 5.0) return { class: 'excellent', icon: '', text: 'Mükemmel Eşleşme' };
-    if (score >= 4.0) return { class: 'good', icon: '', text: 'İyi Eşleşme' };
-    if (score >= 3.0) return { class: 'moderate', icon: '', text: 'Orta Eşleşme' };
-    return { class: 'weak', icon: '', text: 'Zayıf Eşleşme' };
+    // Higher score thresholds for more selective matching (matching index.html)
+    if (score >= 7.0) return { class: 'excellent', icon: '🎯', text: 'Mükemmel Eşleşme' };
+    if (score >= 5.5) return { class: 'very-good', icon: '✅', text: 'Çok İyi Eşleşme' };
+    if (score >= 4.0) return { class: 'good', icon: '👍', text: 'İyi Eşleşme' };
+    if (score >= 2.5) return { class: 'moderate', icon: '⚠️', text: 'Orta Eşleşme' };
+    return { class: 'weak', icon: '❌', text: 'Zayıf Eşleşme' };
 }
 
 // Escape HTML

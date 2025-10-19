@@ -424,11 +424,11 @@ function toggleDescription(button) {
 // Helper Functions
 // =============================================
 function getMatchQuality(score) {
-    // Improved score thresholds matching create_report.js
-    if (score >= 5.0) return { quality: 'excellent', emoji: '🎯' };
-    if (score >= 4.0) return { quality: 'very-good', emoji: '✅' };
-    if (score >= 3.0) return { quality: 'good', emoji: '👍' };
-    if (score >= 2.0) return { quality: 'moderate', emoji: '⚠️' };
+    // Higher score thresholds for more selective matching
+    if (score >= 7.0) return { quality: 'excellent', emoji: '🎯' };
+    if (score >= 5.5) return { quality: 'very-good', emoji: '✅' };
+    if (score >= 4.0) return { quality: 'good', emoji: '👍' };
+    if (score >= 2.5) return { quality: 'moderate', emoji: '⚠️' };
     return { quality: 'weak', emoji: '❌' };
 }
 

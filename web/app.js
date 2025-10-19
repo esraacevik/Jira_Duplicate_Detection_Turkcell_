@@ -526,10 +526,19 @@ async function buildDynamicSearchForm() {
     
     if (!container) return;
     
+    console.log('🔧 buildDynamicSearchForm - allColumns:', allColumns);
+    
     // Display all selected columns info
     if (allColumns.length > 0 && infoContainer && columnsList) {
         columnsList.textContent = allColumns.join(', ');
         infoContainer.style.display = 'block';
+    }
+    
+    // CRITICAL FIX: If no columns configured, use default Summary field!
+    if (allColumns.length === 0) {
+        console.warn('⚠️ No columns configured! Using default Summary field.');
+        // Use default summary column
+        allColumns.push('Summary', 'Description');
     }
     
     // Kategorik stunlar (dropdown gsterilecek)

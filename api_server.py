@@ -876,7 +876,9 @@ def create_report():
                 logger.exception(e)
                 embeddings_updated = False
         else:
-            # Use default CSV path
+            # Use default CSV path (no user-specific data)
+            # Embeddings won't be updated for default data
+            embeddings_updated = False
             csv_path = 'data/data_with_application.csv'
             
             # Read existing CSV

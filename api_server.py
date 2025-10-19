@@ -733,6 +733,9 @@ def create_report():
             'Application': application
         }
         
+        # Initialize embeddings_updated flag
+        embeddings_updated = False
+        
         # User store already retrieved above (line 640)
         if user_store['loaded'] and user_store['data'] is not None:
             # Append to user's custom data
@@ -916,16 +919,13 @@ def create_report():
         
         logger.info(f"✅ New report created: ID={report_id}, App={application}, Summary={data['summary'][:50]}...")
         
-        # NOTE: Embeddings should NOT be updated here for user-specific mode
-        # Users should re-upload their data or we should implement incremental embedding updates
-        
         return jsonify({
             'success': True,
             'message': 'Report created successfully',
             'report_id': report_id,
             'application': application,
             'userId': user_id,
-            'embeddings_updated': False  # Embeddings not auto-updated in user-specific mode
+            'embeddings_updated': embeddings_updated  # Return actual embedding status
         })
         
     except Exception as e:

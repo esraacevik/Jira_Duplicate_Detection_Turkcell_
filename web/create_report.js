@@ -863,7 +863,7 @@ function createFormField(columnName, isCrossEncoder = false) {
                     id="description" 
                     name="description" 
                     class="form-input form-textarea"
-                    placeholder="Test admlar, beklenen ve gzlemlenen sonu..."
+                    placeholder="Test adımları, beklenen ve gözlemlenen sonuç..."
                     rows="4"
                     style="border: 2px solid var(--primary-color);"
                 ></textarea>

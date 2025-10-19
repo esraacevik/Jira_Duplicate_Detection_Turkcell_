@@ -90,6 +90,12 @@ if (document.readyState === 'loading') {
 // Search Function
 // =============================================
 async function performSearch(showLoading = true) {
+    // Check if elements are initialized
+    if (!elements.summaryInput) {
+        console.warn('⚠️ Elements not initialized yet, skipping search');
+        return;
+    }
+    
     const summary = elements.summaryInput.value.trim();
     
     // Validation
@@ -100,9 +106,9 @@ async function performSearch(showLoading = true) {
     
     // Show loading state
     if (showLoading) {
-        elements.loadingState.style.display = 'block';
-        elements.resultsSection.style.display = 'none';
-        elements.searchBtn.disabled = true;
+        if (elements.loadingState) elements.loadingState.style.display = 'block';
+        if (elements.resultsSection) elements.resultsSection.style.display = 'none';
+        if (elements.searchBtn) elements.searchBtn.disabled = true;
     }
     
     // Get user's selected columns from systemConfig

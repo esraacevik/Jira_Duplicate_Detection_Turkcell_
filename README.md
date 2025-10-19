@@ -1,11 +1,21 @@
-JIRA Duplicate Detection System
+---
+title: JIRA Duplicate Detection
+emoji: 🔍
+colorFrom: yellow
+colorTo: red
+sdk: docker
+app_port: 7860
+pinned: false
+license: mit
+---
+
+# JIRA Duplicate Detection System
+
 <div align="center">
 
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![Flask](https://img.shields.io/badge/Flask-2.3+-green.svg)](https://flask.palletsprojects.com/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-
-
 
 </div>
 

@@ -629,13 +629,47 @@ async function loadCategoricalOptions(allColumns) {
 }
 
 // =============================================
+// Load Total Reports Count
+// =============================================
+async function loadTotalReports() {
+    try {
+        const session = JSON.parse(localStorage.getItem('userSession') || '{}');
+        const userId = session.uid || session.username || 'anonymous';
+        
+        const response = await fetch(`${API_BASE_URL}/stats?user_id=${userId}`);
+        const data = await response.json();
+        
+        if (data && data.total_reports !== undefined) {
+            const totalReportsEl = document.getElementById('totalReports');
+            if (totalReportsEl) {
+                totalReportsEl.textContent = data.total_reports.toLocaleString('tr-TR');
+            }
+        }
+    } catch (error) {
+        console.error('Failed to load total reports:', error);
+        // Keep default value if API fails
+    }
+}
+
+// Load total reports on page load
+document.addEventListener('DOMContentLoaded', () => {
+    loadTotalReports();
+});
+
+// Also reload when user comes back from data upload
+window.addEventListener('focus', () => {
+    loadTotalReports();
+});
+
+// =============================================
 // Export for testing
 // =============================================
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         performSearch,
         displayResults,
-        getMatchQuality
+        getMatchQuality,
+        loadTotalReports
     };
 }
 

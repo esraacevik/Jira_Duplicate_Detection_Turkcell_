@@ -590,6 +590,10 @@ async function buildDynamicSearchForm() {
     
     container.innerHTML = formHTML;
     
+    // CRITICAL: Refresh elements IMMEDIATELY after HTML injection
+    // BEFORE adding event listeners (to avoid closure issues)
+    refreshElements();
+    
     // Load options for categorical columns
     await loadCategoricalOptions(allColumns);
     
@@ -615,9 +619,6 @@ async function buildDynamicSearchForm() {
             }
         });
     }
-    
-    // CRITICAL: Refresh elements after form is fully built
-    refreshElements();
 }
 
 // =============================================

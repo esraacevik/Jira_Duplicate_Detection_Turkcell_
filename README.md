@@ -2,7 +2,7 @@ JIRA Duplicate Detection System
 
 AI-powered bug report duplicate detection system using semantic search and hybrid matching.
 
---Primary Objective
+## Primary Objective
 
 Automatically surface similar existing reports when a new bug report is submitted
 
@@ -10,7 +10,7 @@ Minimize duplicate bug reports
 
 Improve the productivity of development and QA/testing teams
 
- ##Real-Time Data Management
+ ## Real-Time Data Management
 
 Hugging Face Spaces: Data is stored and updated in real time on Hugging Face Spaces
 
@@ -28,7 +28,7 @@ All user-specific embeddings, session histories, and vector representations are 
 - **Feature Extraction**: Automatically extract metadata from text
 - **Real-time Embedding**: Dynamic embedding generation
 
-- 📤 Data Management
+- ## 📤 Data Management
 
 Custom Data Upload: Upload your own data via CSV/Excel
 
@@ -42,7 +42,7 @@ Cloud Storage: Data is securely stored on Hugging Face Spaces
 
 Automatic Backup: Data is automatically backed up to the cloud
 
-🔄 Duplicate Management
+## 🔄 Duplicate Management
 
 Replace Report: Replace an old report with a new one
 
@@ -87,7 +87,7 @@ POST /api/extract_features
 - Firebase Authentication required
 - User-specific data isolation
 
-Quick Start
+## Quick Start
 
 To get started quickly, visit:
 https://jira-duplicate-detection.web.app/login.html
@@ -100,13 +100,13 @@ Password: test01
 
 Note: The current demo account is reserved for Turkcell QA engineers. If you’re not within Turkcell, please create a new account and upload your own dataset to begin.
 
-🚀 Alternative: Start with Your Own Account
+## 🚀 Alternative: Start with Your Own Account
 
 Create a new account
 
 Upload your data via CSV/Excel
 
-##Getting Started with Your Own Data
+## Getting Started with Your Own Data
 
 Before uploading your CSV/Excel file, make sure to fill in column names that match your data (e.g., title, description, platform, version, etc.).
 

@@ -19,7 +19,7 @@ let totalDuplicatesFound = 0;
 // =============================================
 // Initialize DOM Elements and Event Listeners
 // =============================================
-function initializeApp() {
+async function initializeApp() {
     // Get DOM elements AFTER page load
     elements = {
         form: document.getElementById('reportForm'),
@@ -60,7 +60,10 @@ function initializeApp() {
     loadStatistics();
     
     // Build dynamic search form
-    buildDynamicSearchForm();
+    await buildDynamicSearchForm();
+    
+    // CRITICAL: Re-initialize elements after dynamic form is built
+    refreshElements();
     
     // Focus on summary input (after dynamic form is built)
     setTimeout(() => {
@@ -69,21 +72,38 @@ function initializeApp() {
     }, 100);
 }
 
+// =============================================
+// Refresh Elements After Dynamic Form Build
+// =============================================
+function refreshElements() {
+    // Update elements with dynamically created form fields
+    if (document.getElementById('summary')) elements.summaryInput = document.getElementById('summary');
+    if (document.getElementById('application')) elements.applicationSelect = document.getElementById('application');
+    if (document.getElementById('platform')) elements.platformSelect = document.getElementById('platform');
+    if (document.getElementById('version')) elements.versionInput = document.getElementById('version');
+    if (document.getElementById('searchBtn')) elements.searchBtn = document.getElementById('searchBtn');
+    if (document.getElementById('charCount')) elements.charCount = document.getElementById('charCount');
+    
+    console.log('✅ Elements refreshed after dynamic form build');
+}
+
 // Initialize when DOM is ready (consolidated initialization)
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        initializeApp();
+    document.addEventListener('DOMContentLoaded', async () => {
+        await initializeApp();
         loadTotalReports();
         console.log('✅ Bug Report System initialized');
         console.log('📍 API Base URL:', API_BASE_URL);
         console.log('✅ Ready to search for duplicate reports!');
     });
 } else {
-    initializeApp();
-    loadTotalReports();
-    console.log('✅ Bug Report System initialized');
-    console.log('📍 API Base URL:', API_BASE_URL);
-    console.log('✅ Ready to search for duplicate reports!');
+    (async () => {
+        await initializeApp();
+        loadTotalReports();
+        console.log('✅ Bug Report System initialized');
+        console.log('📍 API Base URL:', API_BASE_URL);
+        console.log('✅ Ready to search for duplicate reports!');
+    })();
 }
 
 // =============================================

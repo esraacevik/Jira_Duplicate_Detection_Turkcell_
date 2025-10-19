@@ -20,6 +20,8 @@ let totalDuplicatesFound = 0;
 // Initialize DOM Elements and Event Listeners
 // =============================================
 async function initializeApp() {
+    console.log('🚀 initializeApp() START');
+    
     // Get static DOM elements (non-dynamic ones)
     elements = {
         form: document.getElementById('reportForm'),
@@ -38,6 +40,7 @@ async function initializeApp() {
         searchTime: document.getElementById('searchTime'),
         duplicatesFound: document.getElementById('duplicatesFound')
     };
+    console.log('📝 Initial elements (before dynamic form):', elements);
     
     // Form Submit Handler will be added after dynamic form is built
     
@@ -54,11 +57,15 @@ async function initializeApp() {
     loadStatistics();
     
     // Build dynamic search form (refreshElements is called inside)
+    console.log('🔨 About to build dynamic search form...');
     await buildDynamicSearchForm();
+    console.log('✅ Dynamic search form COMPLETE');
+    console.log('📝 Final elements (after dynamic form):', elements);
     
     // Focus on summary input (after dynamic form is built)
     setTimeout(() => {
         const summaryInput = document.getElementById('summary');
+        console.log('🎯 Focus attempt - summary:', summaryInput);
         if (summaryInput) summaryInput.focus();
     }, 100);
 }
@@ -87,8 +94,13 @@ if (document.readyState === 'loading') {
 // =============================================
 async function performSearch(showLoading = true) {
     // Check if elements are initialized
+    console.log('🔍 performSearch called');
+    console.log('📝 elements.summaryInput:', elements.summaryInput);
+    console.log('📝 elements object:', elements);
+    
     if (!elements.summaryInput) {
         console.warn('⚠️ Elements not initialized yet, skipping search');
+        console.warn('⚠️ Trying to get summary directly:', document.getElementById('summary'));
         return;
     }
     
@@ -630,6 +642,9 @@ async function buildDynamicSearchForm() {
 // Refresh Elements After Dynamic Form Build
 // =============================================
 function refreshElements() {
+    console.log('🔄 refreshElements() called');
+    console.log('🔍 Looking for summary element:', document.getElementById('summary'));
+    
     // Update elements with dynamically created form fields
     if (document.getElementById('summary')) elements.summaryInput = document.getElementById('summary');
     if (document.getElementById('application')) elements.applicationSelect = document.getElementById('application');
@@ -641,6 +656,7 @@ function refreshElements() {
     console.log('✅ Elements refreshed after dynamic form build');
     console.log('📝 Summary input:', elements.summaryInput ? 'FOUND' : 'NOT FOUND');
     console.log('📝 Search button:', elements.searchBtn ? 'FOUND' : 'NOT FOUND');
+    console.log('📝 Full elements object:', elements);
 }
 
 // =============================================

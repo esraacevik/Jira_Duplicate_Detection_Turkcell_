@@ -206,6 +206,9 @@ async function handleFormSubmit(e) {
             // Reset form
             form.reset();
             
+            // CRITICAL: Reset search state to allow new searches
+            lastSearchParams = null;
+            
             // Hide similar reports section after reset
             const similarReportsSection = document.getElementById('similarReportsSection');
             if (similarReportsSection) {

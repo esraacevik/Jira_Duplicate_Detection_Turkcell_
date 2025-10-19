@@ -1,4 +1,15 @@
 JIRA Duplicate Detection System
+<div align="center">
+
+[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Flask](https://img.shields.io/badge/Flask-2.3+-green.svg)](https://flask.palletsprojects.com/)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+
+
+</div>
+
+---
 
 AI-powered bug report duplicate detection system using semantic search and hybrid matching.
 
@@ -86,6 +97,64 @@ POST /api/extract_features
 
 - Firebase Authentication required
 - User-specific data isolation
+
+İşte yapısını **hiç bozmadan**, GitHub README.md formatında İngilizceye çevrilmiş hali 👇
+
+---
+
+## 🚀 Installation
+
+### Requirements
+
+* Python 3.8 or higher
+* pip (Python package manager)
+* 4GB+ RAM (for model loading)
+
+### Step 1: Clone the Repository
+
+```bash
+git clone https://github.com/esraacevik/Jira_Duplicate_Detection_Turkcell_.git
+```
+
+### Step 2: Create a Virtual Environment
+
+```bash
+# Mac/Linux
+python3 -m venv venv
+source venv/bin/activate
+
+## Windows
+python -m venv venv
+venv\Scripts\activate
+```
+
+### Step 3: Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### Step 4: Start the Backend
+
+```bash
+# Automatic start (recommended)
+bash start_web_app.sh
+
+# or manually
+python api_server.py
+```
+
+The backend will run at `http://localhost:5001`.
+
+### Step 5: Open the Web Interface
+
+```bash
+# Serve the frontend with a simple HTTP server
+cd web
+python -m http.server 8000
+```
+
+Open in your browser: `http://localhost:8000/intro.html`
 
 ## Quick Start
 

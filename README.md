@@ -2,7 +2,7 @@ JIRA Duplicate Detection System
 
 AI-powered bug report duplicate detection system using semantic search and hybrid matching.
 
-##Primary Objective
+--Primary Objective
 
 Automatically surface similar existing reports when a new bug report is submitted
 

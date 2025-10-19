@@ -627,8 +627,15 @@ async function buildDynamicSearchForm() {
         infoContainer.style.display = 'block';
     }
     
-    // Kategorik stunlar (dropdown gsterilecek)
-    const categoricalColumns = ['application', 'platform', 'priority', 'severity', 'frequency', 'component'];
+    // Kategorik sütunlar (dropdown gösterilecek) - English & Turkish
+    const categoricalColumns = [
+        'application', 'uygulama', 
+        'platform', 
+        'priority', 'öncelik',
+        'severity', 'önem',
+        'frequency', 'sıklık',
+        'component', 'bileşen'
+    ];
     
     // Build form fields for all columns
     let formHTML = '';
@@ -636,8 +643,11 @@ async function buildDynamicSearchForm() {
     for (const columnName of allColumns) {
         const fieldId = columnName.toLowerCase().replace(/\s+/g, '_');
         const isCategorical = categoricalColumns.some(cat => fieldId.includes(cat));
+        const lowerColumnName = columnName.toLowerCase();
         
-        if (columnName.toLowerCase().includes('summary')) {
+        // Check for Summary/Özet field (English or Turkish)
+        if (lowerColumnName.includes('summary') || lowerColumnName.includes('özet')) {
+            console.log(`✅ Found Summary/Özet column: "${columnName}" - Creating summary textarea`);
             formHTML += `
                 <div class="form-group">
                     <label for="summary" class="form-label">
@@ -648,13 +658,27 @@ async function buildDynamicSearchForm() {
                         id="summary" 
                         name="summary" 
                         class="form-input form-textarea"
-                        placeholder="rn: Mesaj gnderilirken uygulama kyor..."
+                        placeholder="Örn: Mesaj gönderilirken uygulama çöküyor..."
                         rows="3"
                         required
                     ></textarea>
                     <div class="input-hint">
                         <span id="charCount">0 / 200</span>
                     </div>
+                </div>
+            `;
+        } else if (lowerColumnName.includes('description') || lowerColumnName.includes('açıklama') || lowerColumnName === 'desc') {
+            // Description field (optional)
+            formHTML += `
+                <div class="form-group">
+                    <label for="description" class="form-label">${columnName}</label>
+                    <textarea 
+                        id="description" 
+                        name="description" 
+                        class="form-input form-textarea"
+                        placeholder="${columnName} girin..."
+                        rows="4"
+                    ></textarea>
                 </div>
             `;
         } else if (isCategorical) {
@@ -725,11 +749,20 @@ function refreshElements() {
 // Load Categorical Column Options
 // =============================================
 async function loadCategoricalOptions(allColumns) {
-    const categoricalColumns = ['application', 'platform', 'priority', 'severity', 'frequency', 'component'];
+    // Same categorical columns as in buildDynamicSearchForm (English & Turkish)
+    const categoricalColumns = [
+        'application', 'uygulama', 
+        'platform', 
+        'priority', 'öncelik',
+        'severity', 'önem',
+        'frequency', 'sıklık',
+        'component', 'bileşen'
+    ];
     
     for (const columnName of allColumns) {
         const fieldId = columnName.toLowerCase().replace(/\s+/g, '_');
-        const isCategorical = categoricalColumns.some(cat => fieldId.includes(cat));
+        const lowerColumnName = columnName.toLowerCase();
+        const isCategorical = categoricalColumns.some(cat => lowerColumnName.includes(cat));
         
         if (isCategorical) {
             const selectEl = document.getElementById(fieldId);

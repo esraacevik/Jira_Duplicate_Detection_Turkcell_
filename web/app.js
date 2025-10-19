@@ -90,34 +90,45 @@ if (document.readyState === 'loading') {
 }
 
 // =============================================
-// Search Function
+// Search Function (REFACTORED - Direct DOM Access like create_report.js)
 // =============================================
 async function performSearch(showLoading = true) {
-    // Check if elements are initialized
     console.log('🔍 performSearch called');
-    console.log('📝 elements.summaryInput:', elements.summaryInput);
-    console.log('📝 elements object:', elements);
     
-    if (!elements.summaryInput) {
-        console.warn('⚠️ Elements not initialized yet, skipping search');
-        console.warn('⚠️ Trying to get summary directly:', document.getElementById('summary'));
+    // CRITICAL FIX: Get elements directly from DOM each time (like create_report.js)
+    const summaryInput = document.getElementById('summary');
+    const loadingState = document.getElementById('loadingState');
+    const resultsSection = document.getElementById('resultsSection');
+    const resultsList = document.getElementById('resultsList');
+    
+    // Check if elements exist
+    if (!summaryInput) {
+        console.warn('⚠️ Summary input not found in DOM, skipping search');
         return;
     }
     
-    const summary = elements.summaryInput.value.trim();
+    const summary = summaryInput.value.trim();
+    console.log('📝 Summary value:', summary);
     
     // Validation
     if (summary.length < MIN_SEARCH_LENGTH) {
-        showNotification('lütfen en az 10 karakter girin', 'warning');
+        console.warn('⚠️ Summary too short:', summary.length);
+        if (resultsSection) resultsSection.style.display = 'none';
         return;
     }
     
     // Show loading state
     if (showLoading) {
-        if (elements.loadingState) elements.loadingState.style.display = 'block';
-        if (elements.resultsSection) elements.resultsSection.style.display = 'none';
-        if (elements.searchBtn) elements.searchBtn.disabled = true;
+        if (loadingState) loadingState.style.display = 'block';
+        if (resultsSection) resultsSection.style.display = 'none';
+        const searchBtn = document.getElementById('searchBtn');
+        if (searchBtn) searchBtn.disabled = true;
     }
+    
+    // Get other form fields (optional)
+    const applicationSelect = document.getElementById('application');
+    const platformSelect = document.getElementById('platform');
+    const versionInput = document.getElementById('version');
     
     // Get user's selected columns from systemConfig
     const systemConfig = JSON.parse(localStorage.getItem('systemConfig') || '{}');
@@ -130,15 +141,15 @@ async function performSearch(showLoading = true) {
     // Prepare request data
     const requestData = {
         query: summary,
-        application: elements.applicationSelect.value || null,
-        platform: elements.platformSelect.value || null,
-        version: elements.versionInput.value || null,
+        application: applicationSelect ? applicationSelect.value || null : null,
+        platform: platformSelect ? platformSelect.value || null : null,
+        version: versionInput ? versionInput.value || null : null,
         top_k: 10,
-        selected_columns: selectedColumns,  // Send selected columns to backend
-        user_id: userId  // Add user_id for user-specific search
+        selected_columns: selectedColumns,
+        user_id: userId
     };
     
-    console.log('🔍 Searching with user_id:', userId);
+    console.log('🔍 Searching with params:', requestData);
     
     try {
         const startTime = performance.now();
@@ -160,60 +171,75 @@ async function performSearch(showLoading = true) {
         const endTime = performance.now();
         const searchTime = ((endTime - startTime) / 1000).toFixed(2);
         
+        console.log('✅ Search successful, results:', data.results.length);
+        
         // Display results
         displayResults(data.results, searchTime);
         
         // Update stats
         totalDuplicatesFound += data.results.length;
-        elements.duplicatesFound.textContent = totalDuplicatesFound;
+        const duplicatesFoundEl = document.getElementById('duplicatesFound');
+        if (duplicatesFoundEl) {
+            duplicatesFoundEl.textContent = totalDuplicatesFound;
+        }
         
     } catch (error) {
-        console.error('Search error:', error);
-        console.error('Error details:', error.message);
-        console.log('API URL:', `${API_BASE_URL}/search`);
-        alert(`API Balant Hatas!\n\nBackend alyor mu?\nURL: ${API_BASE_URL}/search\nHata: ${error.message}\n\nMock data gsteriliyor...`);
-        displayMockResults(); // Show mock data for development
+        console.error('❌ Search error:', error);
+        alert(`API Bağlantı Hatası!\n\nBackend çalışıyor mu?\nURL: ${API_BASE_URL}/search\nHata: ${error.message}`);
     } finally {
-        elements.loadingState.style.display = 'none';
-        elements.searchBtn.disabled = false;
+        if (loadingState) loadingState.style.display = 'none';
+        const searchBtn = document.getElementById('searchBtn');
+        if (searchBtn) searchBtn.disabled = false;
     }
 }
 
 // =============================================
-// Display Results
+// Display Results (REFACTORED - Direct DOM Access)
 // =============================================
 function displayResults(results, searchTime) {
+    // Get DOM elements directly
+    const resultsSection = document.getElementById('resultsSection');
+    const resultsCount = document.getElementById('resultsCount');
+    const searchTimeEl = document.getElementById('searchTime');
+    const warningBanner = document.getElementById('warningBanner');
+    const resultsList = document.getElementById('resultsList');
+    const noResults = document.getElementById('noResults');
+    
+    if (!resultsSection || !resultsList) return;
+    
     // Show results section
-    elements.resultsSection.style.display = 'block';
+    resultsSection.style.display = 'block';
     
     // Update meta info
-    elements.resultsCount.textContent = `${results.length} sonu`;
-    elements.searchTime.textContent = `~${searchTime}s`;
+    if (resultsCount) resultsCount.textContent = `${results.length} sonuç`;
+    if (searchTimeEl) searchTimeEl.textContent = `~${searchTime}s`;
     
     // Check if we have results
     if (results.length === 0) {
-        elements.warningBanner.style.display = 'none';
-        elements.resultsList.style.display = 'none';
-        elements.noResults.style.display = 'block';
+        if (warningBanner) warningBanner.style.display = 'none';
+        if (resultsList) resultsList.style.display = 'none';
+        if (noResults) noResults.style.display = 'block';
         return;
     }
     
     // Show warning banner for similar reports
-    elements.warningBanner.style.display = 'flex';
-    elements.resultsList.style.display = 'block';
-    elements.noResults.style.display = 'none';
+    if (warningBanner) warningBanner.style.display = 'flex';
+    if (resultsList) resultsList.style.display = 'block';
+    if (noResults) noResults.style.display = 'none';
     
     // Clear previous results
-    elements.resultsList.innerHTML = '';
+    resultsList.innerHTML = '';
     
     // Render each result
     results.forEach((result, index) => {
         const card = createResultCard(result, index + 1);
-        elements.resultsList.appendChild(card);
+        resultsList.appendChild(card);
     });
     
     // Scroll to results
-    elements.resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (resultsSection) {
+        resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
 }
 
 // =============================================
@@ -374,7 +400,10 @@ function escapeHtml(text) {
 }
 
 function hideResults() {
-    elements.resultsSection.style.display = 'none';
+    const resultsSection = document.getElementById('resultsSection');
+    if (resultsSection) {
+        resultsSection.style.display = 'none';
+    }
 }
 
 function showNotification(message, type = 'info') {

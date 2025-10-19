@@ -59,32 +59,14 @@ async function initializeApp() {
     // Load statistics
     loadStatistics();
     
-    // Build dynamic search form
+    // Build dynamic search form (refreshElements is called inside)
     await buildDynamicSearchForm();
-    
-    // CRITICAL: Re-initialize elements after dynamic form is built
-    refreshElements();
     
     // Focus on summary input (after dynamic form is built)
     setTimeout(() => {
         const summaryInput = document.getElementById('summary');
         if (summaryInput) summaryInput.focus();
     }, 100);
-}
-
-// =============================================
-// Refresh Elements After Dynamic Form Build
-// =============================================
-function refreshElements() {
-    // Update elements with dynamically created form fields
-    if (document.getElementById('summary')) elements.summaryInput = document.getElementById('summary');
-    if (document.getElementById('application')) elements.applicationSelect = document.getElementById('application');
-    if (document.getElementById('platform')) elements.platformSelect = document.getElementById('platform');
-    if (document.getElementById('version')) elements.versionInput = document.getElementById('version');
-    if (document.getElementById('searchBtn')) elements.searchBtn = document.getElementById('searchBtn');
-    if (document.getElementById('charCount')) elements.charCount = document.getElementById('charCount');
-    
-    console.log('✅ Elements refreshed after dynamic form build');
 }
 
 // Initialize when DOM is ready (consolidated initialization)
@@ -633,6 +615,26 @@ async function buildDynamicSearchForm() {
             }
         });
     }
+    
+    // CRITICAL: Refresh elements after form is fully built
+    refreshElements();
+}
+
+// =============================================
+// Refresh Elements After Dynamic Form Build
+// =============================================
+function refreshElements() {
+    // Update elements with dynamically created form fields
+    if (document.getElementById('summary')) elements.summaryInput = document.getElementById('summary');
+    if (document.getElementById('application')) elements.applicationSelect = document.getElementById('application');
+    if (document.getElementById('platform')) elements.platformSelect = document.getElementById('platform');
+    if (document.getElementById('version')) elements.versionInput = document.getElementById('version');
+    if (document.getElementById('searchBtn')) elements.searchBtn = document.getElementById('searchBtn');
+    if (document.getElementById('charCount')) elements.charCount = document.getElementById('charCount');
+    
+    console.log('✅ Elements refreshed after dynamic form build');
+    console.log('📝 Summary input:', elements.summaryInput ? 'FOUND' : 'NOT FOUND');
+    console.log('📝 Search button:', elements.searchBtn ? 'FOUND' : 'NOT FOUND');
 }
 
 // =============================================

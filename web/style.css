@@ -415,17 +415,19 @@ body {
 .results-list {
     display: flex;
     flex-direction: column;
-    gap: 2rem;  /* Increased spacing between result cards (32px) */
+    gap: 3rem;  /* Extra spacing between result cards (48px) - matching create_report.html visual feel */
 }
 
 .result-card {
     background: white;
     border: 2px solid var(--gray-200);
     border-radius: var(--radius-lg);
-    padding: var(--spacing-lg);
+    padding: 1.75rem;  /* Increased padding (28px) for more spacious cards */
+    margin-bottom: 1rem;  /* Additional bottom margin for better separation */
     transition: all 0.2s;
     animation: fadeIn 0.3s ease-out;
     color: #1a1a1a;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);  /* Subtle shadow for depth */
 }
 
 @keyframes fadeIn {
@@ -441,7 +443,8 @@ body {
 
 .result-card:hover {
     border-color: var(--primary-color);
-    box-shadow: var(--shadow-md);
+    box-shadow: 0 4px 12px rgba(255, 149, 0, 0.15);  /* Enhanced shadow with primary color tint */
+    transform: translateY(-2px);  /* Subtle lift effect */
 }
 
 .result-header {

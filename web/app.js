@@ -6,25 +6,9 @@ const MIN_SEARCH_LENGTH = 10;
 const DEBOUNCE_DELAY = 500;
 
 // =============================================
-// DOM Elements
+// DOM Elements (will be initialized after DOM loads)
 // =============================================
-const elements = {
-    form: document.getElementById('reportForm'),
-    summaryInput: document.getElementById('summary'),
-    applicationSelect: document.getElementById('application'),
-    platformSelect: document.getElementById('platform'),
-    versionInput: document.getElementById('version'),
-    searchBtn: document.getElementById('searchBtn'),
-    charCount: document.getElementById('charCount'),
-    loadingState: document.getElementById('loadingState'),
-    resultsSection: document.getElementById('resultsSection'),
-    resultsList: document.getElementById('resultsList'),
-    warningBanner: document.getElementById('warningBanner'),
-    noResults: document.getElementById('noResults'),
-    resultsCount: document.getElementById('resultsCount'),
-    searchTime: document.getElementById('searchTime'),
-    duplicatesFound: document.getElementById('duplicatesFound')
-};
+let elements = {};
 
 // =============================================
 // State Management
@@ -32,15 +16,75 @@ const elements = {
 let searchTimeout = null;
 let totalDuplicatesFound = 0;
 
-// Character counter will be attached dynamically after form is built
+// =============================================
+// Initialize DOM Elements and Event Listeners
+// =============================================
+function initializeApp() {
+    // Get DOM elements AFTER page load
+    elements = {
+        form: document.getElementById('reportForm'),
+        summaryInput: document.getElementById('summary'),
+        applicationSelect: document.getElementById('application'),
+        platformSelect: document.getElementById('platform'),
+        versionInput: document.getElementById('version'),
+        searchBtn: document.getElementById('searchBtn'),
+        charCount: document.getElementById('charCount'),
+        loadingState: document.getElementById('loadingState'),
+        resultsSection: document.getElementById('resultsSection'),
+        resultsList: document.getElementById('resultsList'),
+        warningBanner: document.getElementById('warningBanner'),
+        noResults: document.getElementById('noResults'),
+        resultsCount: document.getElementById('resultsCount'),
+        searchTime: document.getElementById('searchTime'),
+        duplicatesFound: document.getElementById('duplicatesFound')
+    };
+    
+    // Form Submit Handler
+    if (elements.form) {
+        elements.form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            performSearch(true); // Show loading animation
+        });
+    }
+    
+    // Display user name
+    const session = JSON.parse(localStorage.getItem('userSession'));
+    if (session) {
+        const userNameEl = document.getElementById('userNameDisplay');
+        if (userNameEl) {
+            userNameEl.textContent = session.name ? session.name.split(' ')[0] : 'User';
+        }
+    }
+    
+    // Load statistics
+    loadStatistics();
+    
+    // Build dynamic search form
+    buildDynamicSearchForm();
+    
+    // Focus on summary input (after dynamic form is built)
+    setTimeout(() => {
+        const summaryInput = document.getElementById('summary');
+        if (summaryInput) summaryInput.focus();
+    }, 100);
+}
 
-// =============================================
-// Form Submit Handler
-// =============================================
-elements.form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    performSearch(true); // Show loading animation
-});
+// Initialize when DOM is ready (consolidated initialization)
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        initializeApp();
+        loadTotalReports();
+        console.log('✅ Bug Report System initialized');
+        console.log('📍 API Base URL:', API_BASE_URL);
+        console.log('✅ Ready to search for duplicate reports!');
+    });
+} else {
+    initializeApp();
+    loadTotalReports();
+    console.log('✅ Bug Report System initialized');
+    console.log('📍 API Base URL:', API_BASE_URL);
+    console.log('✅ Ready to search for duplicate reports!');
+}
 
 // =============================================
 // Search Function
@@ -447,31 +491,9 @@ async function loadStatistics() {
 }
 
 // =============================================
-// Initialize
+// Initialize (REMOVED - now handled in initializeApp)
 // =============================================
-document.addEventListener('DOMContentLoaded', () => {
-    console.log(' Bug Report System initialized');
-    console.log('API Base URL:', API_BASE_URL);
-    console.log('Ready to search for duplicate reports!');
-    
-    // Display user name
-    const session = JSON.parse(localStorage.getItem('userSession'));
-    if (session) {
-        document.getElementById('userNameDisplay').textContent = session.name.split(' ')[0];
-    }
-    
-    // Load statistics
-    loadStatistics();
-    
-    // Build dynamic search form
-    buildDynamicSearchForm();
-    
-    // Focus on summary input (after dynamic form is built)
-    setTimeout(() => {
-        const summaryInput = document.getElementById('summary');
-        if (summaryInput) summaryInput.focus();
-    }, 100);
-});
+// Initialization moved to consolidated initializeApp() function above
 
 // =============================================
 // Build Dynamic Search Form Based on Selected Columns
@@ -664,12 +686,7 @@ async function loadTotalReports() {
     }
 }
 
-// Load total reports on page load
-document.addEventListener('DOMContentLoaded', () => {
-    loadTotalReports();
-});
-
-// Also reload when user comes back from data upload
+// Reload when user comes back from data upload
 window.addEventListener('focus', () => {
     loadTotalReports();
 });

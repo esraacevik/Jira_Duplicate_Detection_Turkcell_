@@ -636,17 +636,30 @@ async function loadTotalReports() {
         const session = JSON.parse(localStorage.getItem('userSession') || '{}');
         const userId = session.uid || session.username || 'anonymous';
         
+        console.log('📊 Loading total reports for user:', userId);
         const response = await fetch(`${API_BASE_URL}/stats?user_id=${userId}`);
         const data = await response.json();
         
-        if (data && data.total_reports !== undefined) {
+        console.log('📊 Stats response:', data);
+        
+        // Check if stats exists and has total_reports
+        if (data && data.stats && data.stats.total_reports !== undefined) {
             const totalReportsEl = document.getElementById('totalReports');
             if (totalReportsEl) {
-                totalReportsEl.textContent = data.total_reports.toLocaleString('tr-TR');
+                const count = data.stats.total_reports;
+                totalReportsEl.textContent = count.toLocaleString('tr-TR');
+                console.log('✅ Total reports updated:', count);
+            }
+        } else if (data && data.customDataLoaded === false) {
+            // No data loaded yet
+            const totalReportsEl = document.getElementById('totalReports');
+            if (totalReportsEl) {
+                totalReportsEl.textContent = '0';
+                console.log('⚠️ No custom data loaded yet');
             }
         }
     } catch (error) {
-        console.error('Failed to load total reports:', error);
+        console.error('❌ Failed to load total reports:', error);
         // Keep default value if API fails
     }
 }

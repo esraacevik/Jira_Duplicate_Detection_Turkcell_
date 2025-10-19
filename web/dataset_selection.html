@@ -269,7 +269,7 @@
                         console.error(' Error loading datasets:', error);
                         var loadingState = document.getElementById('loadingState');
                         if (loadingState) {
-                            loadingState.innerHTML = '<div style="color: #DC2626;"> Veri setleri yklenirken hata olutu<br><small>' + error.message + '</small><br><small>lütfen console\'u kontrol edin (F12)</small></div>';
+                            loadingState.innerHTML = '<div style="color: #DC2626;"> Veri setleri yüklenirken hata oluştu<br><small>' + error.message + '</small><br><small>lütfen console\'u kontrol edin (F12)</small></div>';
                         }
                     });
             }
@@ -280,7 +280,7 @@
                 var actionButtons = document.getElementById('actionButtons');
 
                 if (datasets.length === 0) {
-                    loadingState.innerHTML = '<div style="color: #6B7280;"> Henz veri seti bulunmuyor</div>';
+                    loadingState.innerHTML = '<div style="color: #6B7280;"> Henüz veri seti bulunmuyor</div>';
                     return;
                 }
 
@@ -308,7 +308,7 @@
                     var dataset = allDatasets[i];
                     var badge = '';
                     if (dataset.type === 'user') {
-                        badge = '<span class="dataset-badge" style="background: #10B981; color: white;">BENM VERM</span>';
+                        badge = '<span class="dataset-badge" style="background: #10B981; color: white;">KİŞİSEL VERİ</span>';
                     } else if (i === userDatasets.length) {
                         badge = '<span class="dataset-badge">VARSAYILAN</span>';
                     }
@@ -324,12 +324,12 @@
                     html += '<div class="dataset-card" onclick="window.selectDataset(\'' + dataset.fileName + '\', this)">' +
                         '<div class="dataset-header"><div class="dataset-name">' + dataset.name + '</div>' + badge + '</div>' +
                         '<div class="dataset-info">' +
-                        '<div class="info-item"><div class="info-label">Toplam Kayt</div><div class="info-value">' + dataset.rowCount.toLocaleString() + '</div></div>' +
-                        '<div class="info-item"><div class="info-label">sütun Says</div><div class="info-value">' + dataset.columnCount + '</div></div>' +
+                        '<div class="info-item"><div class="info-label">Toplam Kayıt</div><div class="info-value">' + dataset.rowCount.toLocaleString() + '</div></div>' +
+                        '<div class="info-item"><div class="info-label">Sütun Sayısı</div><div class="info-value">' + dataset.columnCount + '</div></div>' +
                         '<div class="info-item"><div class="info-label">Dosya Boyutu</div><div class="info-value">' + dataset.fileSize + '</div></div>' +
-                        '<div class="info-item"><div class="info-label">Son Gncelleme</div><div class="info-value">' + dataset.lastModified + '</div></div>' +
+                        '<div class="info-item"><div class="info-label">Son Güncelleme</div><div class="info-value">' + dataset.lastModified + '</div></div>' +
                         '</div>' +
-                        '<div class="dataset-columns"><div class="columns-label">Stunlar (' + dataset.columns.length + '):</div>' +
+                        '<div class="dataset-columns"><div class="columns-label">Sütunlar (' + dataset.columns.length + '):</div>' +
                         '<div class="columns-list">' + columnsHtml + '</div></div>' +
                         '</div>';
                 }
@@ -348,13 +348,13 @@
 
             window.loadSelectedDataset = function() {
                 if (!selectedDataset) {
-                    alert('lütfen bir veri seti sein');
+                    alert('Lütfen bir veri seti seçin');
                     return;
                 }
 
                 var btn = document.getElementById('loadDatasetBtn');
                 btn.disabled = true;
-                btn.innerHTML = ' Ykleniyor...';
+                btn.innerHTML = ' Yükleniyor...';
 
                 // Get userId from session
                 var session = JSON.parse(localStorage.getItem('userSession') || '{}');
@@ -385,9 +385,9 @@
                     })
                     .catch(function(error) {
                         console.error('Error loading dataset:', error);
-                        alert('Veri seti yklenirken hata olutu: ' + error.message);
+                        alert('Veri seti yüklenirken hata oluştu: ' + error.message);
                         btn.disabled = false;
-                        btn.innerHTML = ' Veri Setini yükle ve Devam Et';
+                        btn.innerHTML = ' Veri Setini Yükle ve Devam Et';
                     });
             };
 

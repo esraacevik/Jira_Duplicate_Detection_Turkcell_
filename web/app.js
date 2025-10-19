@@ -60,14 +60,63 @@ async function initializeApp() {
     console.log('🔨 About to build dynamic search form...');
     await buildDynamicSearchForm();
     console.log('✅ Dynamic search form COMPLETE');
-    console.log('📝 Final elements (after dynamic form):', elements);
     
-    // Focus on summary input (after dynamic form is built)
+    // Attach event listeners to form (regardless of dynamic or static form)
+    attachFormEventListeners();
+    
+    // Focus on summary input
     setTimeout(() => {
         const summaryInput = document.getElementById('summary');
         console.log('🎯 Focus attempt - summary:', summaryInput);
         if (summaryInput) summaryInput.focus();
     }, 100);
+}
+
+// =============================================
+// Attach Form Event Listeners (Works with both dynamic and static forms)
+// =============================================
+function attachFormEventListeners() {
+    console.log('🔌 Attaching form event listeners...');
+    
+    // Get form elements
+    const summaryInput = document.getElementById('summary');
+    const charCountEl = document.getElementById('charCount');
+    const form = document.getElementById('reportForm');
+    
+    // Attach input event to summary
+    if (summaryInput) {
+        summaryInput.addEventListener('input', (e) => {
+            const length = e.target.value.length;
+            if (charCountEl) {
+                charCountEl.textContent = `${length} / 200`;
+                charCountEl.style.color = length > 200 ? 'var(--danger-color)' : 'var(--gray-500)';
+            }
+            
+            // Auto-search
+            clearTimeout(searchTimeout);
+            if (length >= MIN_SEARCH_LENGTH) {
+                searchTimeout = setTimeout(() => {
+                    performSearch(false);
+                }, DEBOUNCE_DELAY);
+            } else {
+                hideResults();
+            }
+        });
+        console.log('✅ Input event listener attached to summary');
+    } else {
+        console.error('❌ Summary input not found!');
+    }
+    
+    // Attach form submit event
+    if (form) {
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            performSearch(true);
+        });
+        console.log('✅ Submit event listener attached to form');
+    } else {
+        console.error('❌ Form not found!');
+    }
 }
 
 // Initialize when DOM is ready (consolidated initialization)
@@ -564,69 +613,12 @@ async function buildDynamicSearchForm() {
         return;
     }
     
-    // CRITICAL FIX: If no columns configured, use default Summary field!
+    // CRITICAL FIX: If no columns configured, use static HTML form
     if (allColumns.length === 0) {
-        console.warn('⚠️ No columns configured! Using default fallback form.');
-        // Build simple fallback form
-        container.innerHTML = `
-            <div class="form-group">
-                <label for="summary" class="form-label">
-                    <span>Summary</span>
-                    <span class="required">*</span>
-                </label>
-                <textarea 
-                    id="summary" 
-                    name="summary" 
-                    class="form-input form-textarea"
-                    placeholder="Örn: Mesaj gönderilirken uygulama çöküyor..."
-                    rows="3"
-                    required
-                ></textarea>
-                <div class="input-hint">
-                    <span id="charCount">0 / 200</span>
-                </div>
-            </div>
-        `;
-        
-        // Refresh elements immediately
-        refreshElements();
-        
-        // Attach event listener
-        const summaryInput = document.getElementById('summary');
-        if (summaryInput) {
-            summaryInput.addEventListener('input', (e) => {
-                const length = e.target.value.length;
-                const charCountEl = document.getElementById('charCount');
-                if (charCountEl) {
-                    charCountEl.textContent = `${length} / 200`;
-                    charCountEl.style.color = length > 200 ? 'var(--danger-color)' : 'var(--gray-500)';
-                }
-                
-                // Auto-search
-                clearTimeout(searchTimeout);
-                if (length >= MIN_SEARCH_LENGTH) {
-                    searchTimeout = setTimeout(() => {
-                        performSearch(false);
-                    }, DEBOUNCE_DELAY);
-                } else {
-                    hideResults();
-                }
-            });
-            console.log('✅ Fallback form created and event listener attached');
-        }
-        
-        // Add form submit handler for fallback form
-        const form = document.getElementById('reportForm');
-        const searchBtn = document.getElementById('searchBtn');
-        if (form && searchBtn) {
-            form.addEventListener('submit', (e) => {
-                e.preventDefault();
-                performSearch(true);
-            });
-            console.log('✅ Form submit handler attached to fallback form');
-        }
-        
-        return; // Exit early with fallback form
+        console.warn('⚠️ No columns configured! Using static HTML form (no dynamic replacement).');
+        // Don't replace container.innerHTML - keep the static HTML form!
+        // Event listeners will be attached by attachFormEventListeners()
+        return; // Exit early - use existing HTML form
     }
     
     // Display all selected columns info
@@ -698,47 +690,14 @@ async function buildDynamicSearchForm() {
     }
     
     container.innerHTML = formHTML;
-    
-    // CRITICAL: Refresh elements IMMEDIATELY after HTML injection
-    // BEFORE adding event listeners (to avoid closure issues)
-    refreshElements();
+    console.log('✅ Dynamic form HTML injected');
     
     // Load options for categorical columns
     await loadCategoricalOptions(allColumns);
+    console.log('✅ Categorical options loaded');
     
-    // Re-attach character counter for summary
-    const summaryInput = document.getElementById('summary');
-    if (summaryInput) {
-        summaryInput.addEventListener('input', (e) => {
-            const length = e.target.value.length;
-            const charCountEl = document.getElementById('charCount');
-            if (charCountEl) {
-                charCountEl.textContent = `${length} / 200`;
-                charCountEl.style.color = length > 200 ? 'var(--danger-color)' : 'var(--gray-500)';
-            }
-            
-            // Auto-search
-            clearTimeout(searchTimeout);
-            if (length >= MIN_SEARCH_LENGTH) {
-                searchTimeout = setTimeout(() => {
-                    performSearch(false);
-                }, DEBOUNCE_DELAY);
-            } else {
-                hideResults();
-            }
-        });
-    }
-    
-    // CRITICAL: Add form submit handler AFTER elements are refreshed
-    const searchBtn = document.getElementById('searchBtn');
-    const form = document.getElementById('reportForm');
-    if (searchBtn && form) {
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            performSearch(true); // Show loading animation
-        });
-        console.log('✅ Form submit handler attached');
-    }
+    // NOTE: Event listeners will be attached by attachFormEventListeners() 
+    // after this function returns, to avoid duplicate listeners
 }
 
 // =============================================

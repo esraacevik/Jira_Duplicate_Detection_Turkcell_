@@ -6,14 +6,19 @@ let searchTimeout = null;
 let lastSearchParams = null;
 let customDataLoaded = false;
 
-// Check data status on load
+// Check data status on load (user-specific)
 async function checkDataStatus() {
     try {
-        const response = await fetch(`${API_BASE_URL}/data_status`);
+        // Get current user's userId
+        const session = JSON.parse(localStorage.getItem('userSession'));
+        const userId = session?.uid || session?.username || 'anonymous';
+        
+        console.log('🔍 Checking data status for user:', userId);
+        const response = await fetch(`${API_BASE_URL}/data_status?user_id=${userId}`);
         if (response.ok) {
             const data = await response.json();
-            customDataLoaded = data.customDataLoaded;
-            console.log(' Data status:', customDataLoaded ? 'Custom data loaded' : 'Using default data');
+            customDataLoaded = data.custom_data_loaded || data.customDataLoaded;
+            console.log('📊 Data status:', customDataLoaded ? 'Custom data loaded' : 'Using default data');
             
             // Show banner if custom data is loaded
             if (customDataLoaded && data.dataInfo) {
@@ -23,14 +28,14 @@ async function checkDataStatus() {
                 if (banner && info) {
                     info.innerHTML = 
                         `<strong>Dosya:</strong> ${data.dataInfo.fileName}<br>` +
-                        `<strong>Satr:</strong> ${data.dataInfo.rowCount.toLocaleString()}<br>` +
-                        `<strong>sütun:</strong> ${data.dataInfo.columns.length}`;
+                        `<strong>Satır:</strong> ${data.dataInfo.rowCount.toLocaleString()}<br>` +
+                        `<strong>Sütun:</strong> ${data.dataInfo.columns.length}`;
                     banner.style.display = 'block';
                 }
             }
         }
     } catch (error) {
-        console.warn('Could not check data status:', error);
+        console.warn('⚠️ Could not check data status:', error);
     }
 }
 
@@ -683,22 +688,29 @@ async function buildDynamicFormFields() {
     const metadataColumns = config.metadataColumns || [];
     const selectedColumns = [...new Set([...crossEncoderColumns, ...metadataColumns])];
     
-    // STEP 1: Backend'den datadaki TÜM sütunları al
+    // STEP 1: Backend'den datadaki TÜM sütunları al (kullanıcıya özel)
     let allDataColumns = [];
     try {
-        const response = await fetch(`${API_BASE_URL}/data_status`);
+        // Get current user's userId
+        const session = JSON.parse(localStorage.getItem('userSession'));
+        const userId = session?.uid || session?.username || 'anonymous';
+        
+        console.log('📡 Fetching data columns for user:', userId);
+        const response = await fetch(`${API_BASE_URL}/data_status?user_id=${userId}`);
         const data = await response.json();
         
         // Custom data varsa onun sütunlarını, yoksa default sütunları al
         if (data.custom_data_loaded && data.custom_data_columns) {
             allDataColumns = data.custom_data_columns;
+            console.log('✅ User custom data columns loaded:', allDataColumns);
         } else if (data.default_data_columns) {
             allDataColumns = data.default_data_columns;
+            console.log('⚠️ Using default data columns:', allDataColumns);
         }
         
-        console.log(' Datadaki TÜM sütunlar:', allDataColumns);
+        console.log('📋 Datadaki TÜM sütunlar:', allDataColumns);
     } catch (error) {
-        console.error('Backend\'den sütunlar alınamadı:', error);
+        console.error('❌ Backend\'den sütunlar alınamadı:', error);
     }
     
     // STEP 2: Seçili ve seçilmemiş sütunları ayır

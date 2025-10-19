@@ -20,15 +20,15 @@ let totalDuplicatesFound = 0;
 // Initialize DOM Elements and Event Listeners
 // =============================================
 async function initializeApp() {
-    // Get DOM elements AFTER page load
+    // Get static DOM elements (non-dynamic ones)
     elements = {
         form: document.getElementById('reportForm'),
-        summaryInput: document.getElementById('summary'),
-        applicationSelect: document.getElementById('application'),
-        platformSelect: document.getElementById('platform'),
-        versionInput: document.getElementById('version'),
-        searchBtn: document.getElementById('searchBtn'),
-        charCount: document.getElementById('charCount'),
+        summaryInput: null,  // Will be set after dynamic form build
+        applicationSelect: null,
+        platformSelect: null,
+        versionInput: null,
+        searchBtn: null,
+        charCount: null,
         loadingState: document.getElementById('loadingState'),
         resultsSection: document.getElementById('resultsSection'),
         resultsList: document.getElementById('resultsList'),
@@ -39,13 +39,7 @@ async function initializeApp() {
         duplicatesFound: document.getElementById('duplicatesFound')
     };
     
-    // Form Submit Handler
-    if (elements.form) {
-        elements.form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            performSearch(true); // Show loading animation
-        });
-    }
+    // Form Submit Handler will be added after dynamic form is built
     
     // Display user name
     const session = JSON.parse(localStorage.getItem('userSession'));
@@ -618,6 +612,17 @@ async function buildDynamicSearchForm() {
                 hideResults();
             }
         });
+    }
+    
+    // CRITICAL: Add form submit handler AFTER elements are refreshed
+    const searchBtn = document.getElementById('searchBtn');
+    const form = document.getElementById('reportForm');
+    if (searchBtn && form) {
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            performSearch(true); // Show loading animation
+        });
+        console.log('✅ Form submit handler attached');
     }
 }
 

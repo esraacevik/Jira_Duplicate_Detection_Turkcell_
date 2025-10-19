@@ -424,20 +424,21 @@ function toggleDescription(button) {
 // Helper Functions
 // =============================================
 function getMatchQuality(score) {
-    if (score >= 4.0) return { quality: 'excellent', emoji: '' };
-    if (score >= 3.0) return { quality: 'very-good', emoji: '' };
-    if (score >= 2.0) return { quality: 'good', emoji: '' };
-    if (score >= 1.0) return { quality: 'moderate', emoji: '' };
-    return { quality: 'weak', emoji: '' };
+    // Improved score thresholds matching create_report.js
+    if (score >= 5.0) return { quality: 'excellent', emoji: '🎯' };
+    if (score >= 4.0) return { quality: 'very-good', emoji: '✅' };
+    if (score >= 3.0) return { quality: 'good', emoji: '👍' };
+    if (score >= 2.0) return { quality: 'moderate', emoji: '⚠️' };
+    return { quality: 'weak', emoji: '❌' };
 }
 
 function getMatchQualityText(quality) {
     const texts = {
-        'excellent': 'Mkemmel Eleme',
-        'very-good': 'ok yi Eleme',
-        'good': 'yi Eleme',
-        'moderate': 'Orta Eleme',
-        'weak': 'Zayf Eleme'
+        'excellent': 'Mükemmel Eşleşme',
+        'very-good': 'Çok İyi Eşleşme',
+        'good': 'İyi Eşleşme',
+        'moderate': 'Orta Eşleşme',
+        'weak': 'Zayıf Eşleşme'
     };
     return texts[quality] || 'Bilinmeyen';
 }

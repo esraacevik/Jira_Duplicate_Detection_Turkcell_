@@ -193,7 +193,7 @@ async function performSearch(showLoading = true) {
         application: applicationSelect ? applicationSelect.value || null : null,
         platform: platformSelect ? platformSelect.value || null : null,
         version: versionInput ? versionInput.value || null : null,
-        top_k: 10,
+        top_k: 5,  // Show top 5 similar reports
         selected_columns: selectedColumns,
         user_id: userId
     };

@@ -415,7 +415,7 @@ body {
 .results-list {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-md);
+    gap: 2rem;  /* Increased spacing between result cards (32px) */
 }
 
 .result-card {
